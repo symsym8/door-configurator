@@ -1,0 +1,772 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="8000mm"
+   height="5000mm"
+   viewBox="0 0 8000 5000"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   sodipodi:docname="PORTE_HALL_V4.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="false"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="0.24536678"
+     inkscape:cx="14082.998"
+     inkscape:cy="10944.839"
+     inkscape:window-width="3440"
+     inkscape:window-height="1369"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g10" />
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="#layer-dormant"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="display:inline">
+    <rect
+       style="fill:#00ff00;stroke-width:0.257551;stroke-dasharray:none"
+       id="dormant-montant-gauche"
+       width="70"
+       height="2100"
+       x="3500"
+       y="2000" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.264999;stroke-dasharray:none"
+       id="dormant-montant-droit"
+       height="2100"
+       x="4430"
+       y="2000"
+       width="70" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.144235;stroke-dasharray:none"
+       id="dormant-traverse-haute"
+       width="1000"
+       height="70"
+       x="3500"
+       y="2000" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       id="dormant-contour-ext"
+       width="999"
+       height="2099"
+       x="3500.5"
+       y="2000.5" />
+    <rect
+       style="display:inline;fill:#ff0000;stroke-width:0.2593;stroke-dasharray:none"
+       id="dormant-seuil"
+       width="900"
+       height="10"
+       x="3550"
+       y="4089.9814" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.950682;stroke-dasharray:none;stroke-opacity:1"
+       id="dormant-contour-seuil"
+       width="899.04932"
+       height="9.0493183"
+       x="3550.4753"
+       y="4090.4753" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1.00019;stroke-dasharray:none;stroke-opacity:1"
+       id="dormant-contour-int"
+       width="861.00024"
+       height="2020.8998"
+       x="3569.5"
+       y="2069.5" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer10"
+     inkscape:label="#layer-ouvrant">
+    <g
+       inkscape:groupmode="layer"
+       id="g9"
+       inkscape:label="#layer-ouvrant-paumelles"
+       style="display:none">
+      <rect
+         style="fill:#ffff00;stroke-width:0.252472;stroke-dasharray:none"
+         id="ouvrant-paumelles-remplissage"
+         width="710"
+         height="1845"
+         x="3645"
+         y="2144.9988" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.240755;stroke-dasharray:none"
+         id="ouvrant-paumelles-montant-gauche"
+         width="90"
+         height="2005"
+         x="3555"
+         y="2074.9995" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.337817;stroke-dasharray:none"
+         id="ouvrant-paumelles-montant-droit"
+         width="90"
+         height="2005"
+         x="4355"
+         y="2074.9995" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.34492;stroke-dasharray:none"
+         id="ouvrant-paumelles-traverse-haute"
+         width="890"
+         height="90"
+         x="3555"
+         y="2055" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.34492;stroke-dasharray:none"
+         id="ouvrant-paumelles-traverse-basse"
+         width="890"
+         height="90"
+         x="3555"
+         y="3990" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.278751;stroke-dasharray:none"
+         id="traverse-paumelles-mobile"
+         width="710"
+         height="90"
+         x="3645"
+         y="3000.0015" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.02836;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-paumelles-contour-ext"
+         width="888.97168"
+         height="2023.9736"
+         x="3555.5142"
+         y="2055.5142" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.967727;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-paumelles-contour-int"
+         width="709.03229"
+         height="1844.0322"
+         x="3645.4839"
+         y="2145.4839" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.973097;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-paumelles-contour-traverse-mobile"
+         width="709.03888"
+         height="89.039253"
+         x="3645.4866"
+         y="3000.4802" />
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       id="g10"
+       inkscape:label="#layer-ouvrant-pivot-g"
+       style="display:inline">
+      <rect
+         style="fill:#ffff00;stroke-width:0.249791;stroke-dasharray:none"
+         id="ouvrant-pivot-g-remplissage"
+         width="695"
+         height="1845"
+         x="3660"
+         y="2144.9988" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.241953;stroke-dasharray:none"
+         id="ouvrant-pivot-g-montant-gauche"
+         width="90"
+         height="2025"
+         x="3570"
+         y="2055" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.339498;stroke-dasharray:none"
+         id="ouvrant-pivot-g-montant-droit"
+         width="90"
+         height="2025"
+         x="4355"
+         y="2055" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.342001;stroke-dasharray:none"
+         id="ouvrant-pivot-g-traverse-haute"
+         width="875"
+         height="90"
+         x="3570"
+         y="2055" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.342002;stroke-dasharray:none"
+         id="ouvrant-pivot-g-traverse-basse"
+         width="875"
+         height="90"
+         x="3570"
+         y="3990" />
+      <rect
+         style="fill:#00ff00;stroke-width:0.275791;stroke-dasharray:none"
+         id="traverse-pivot-g-mobile"
+         width="695"
+         height="90"
+         x="3660"
+         y="3000.0015" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.01966;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-pivot-g-contour-ext"
+         width="873.98035"
+         height="2023.9823"
+         x="3570.5098"
+         y="2055.5098" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.957446;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-pivot-g-contour-int"
+         width="694.04254"
+         height="1844.0425"
+         x="3660.4788"
+         y="2145.4788" />
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.962804;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-pivot-g-contour-traverse-mobile"
+         width="694.03717"
+         height="89.049545"
+         x="3660.4814"
+         y="3000.4751" />
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       id="g18"
+       inkscape:label="#layer-ouvrant-pivot-d"
+       style="display:inline">
+      <rect
+         style="display:inline;fill:#ffff00;stroke-width:0.249791;stroke-dasharray:none"
+         id="ouvrant-pivot-d-remplissage"
+         width="695"
+         height="1845"
+         x="3645"
+         y="2144.9988" />
+      <rect
+         style="display:inline;fill:#00ff00;stroke-width:0.241953;stroke-dasharray:none"
+         id="ouvrant-pivot-d-montant-gauche"
+         width="90"
+         height="2025"
+         x="3555"
+         y="2055" />
+      <rect
+         style="display:inline;fill:#00ff00;stroke-width:0.339498;stroke-dasharray:none"
+         id="ouvrant-pivot-d-montant-droit"
+         width="90"
+         height="2025"
+         x="4340"
+         y="2055" />
+      <rect
+         style="display:inline;fill:#00ff00;stroke-width:0.342001;stroke-dasharray:none"
+         id="ouvrant-pivot-d-traverse-haute"
+         width="875"
+         height="90"
+         x="3555"
+         y="2055" />
+      <rect
+         style="display:inline;fill:#00ff00;stroke-width:0.342002;stroke-dasharray:none"
+         id="ouvrant-pivot-d-traverse-basse"
+         width="875"
+         height="90"
+         x="3555"
+         y="3990" />
+      <rect
+         style="display:inline;fill:#00ff00;stroke-width:0.275791;stroke-dasharray:none"
+         id="traverse-pivot-d-mobile"
+         width="695"
+         height="90"
+         x="3645"
+         y="3000.0015" />
+      <rect
+         style="display:inline;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.01966;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-pivot-d-contour-ext"
+         width="873.98035"
+         height="2023.9823"
+         x="3555.5098"
+         y="2055.5098" />
+      <rect
+         style="display:inline;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.957446;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-pivot-d-contour-int"
+         width="694.04254"
+         height="1844.0425"
+         x="3645.4788"
+         y="2145.4788" />
+      <rect
+         style="display:inline;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.962804;stroke-dasharray:none;stroke-opacity:1"
+         id="ouvrant-pivot-d-contour-traverse-mobile"
+         width="694.03717"
+         height="89.049545"
+         x="3645.4814"
+         y="3000.4751" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer9"
+     inkscape:label="#layer-ferrures">
+    <g
+       inkscape:groupmode="layer"
+       id="layer8"
+       inkscape:label="#bandeau-ventouses"
+       style="display:none">
+      <rect
+         style="opacity:0.886926;fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:1.62077;stroke-linejoin:round"
+         id="bandeau-ventouses-g"
+         width="58.37923"
+         height="2023.3793"
+         x="3500.8103"
+         y="2055.8103" />
+      <rect
+         style="display:none;opacity:0.886926;fill:#00ff00;fill-opacity:1;stroke:#000000;stroke-width:1.62077;stroke-linejoin:round"
+         id="bandeau-ventouses-d"
+         width="58.37923"
+         height="2023.3793"
+         x="4440.8105"
+         y="2055.8103" />
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       id="layer7"
+       inkscape:label="#layer-paumelles-d"
+       style="display:none">
+      <g
+         id="paumelle-1-d"
+         transform="translate(1377.3069,761.31616)">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-1-paumelle-d"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-1-paumelles-d"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+      <g
+         id="g6"
+         transform="translate(1377.3069,41.316161)"
+         inkscape:label="paumelle-2-d">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-2-paumelle-d"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-2-paumelles-d"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+      <g
+         id="paumelle-3-d"
+         transform="translate(1377.3069,-596.18385)">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-3-paumelle-d"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-3-paumelles-d"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+      <g
+         id="paumelle-4-d"
+         transform="translate(1377.3069,-856.18383)">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-4-paumelles-d"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-4-paumelles-d"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       id="layer5"
+       inkscape:label="#layer-paumelles-g"
+       style="display:inline">
+      <g
+         id="paumelle-1-g"
+         transform="translate(488.80688,761.31616)">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-1-paumelle-g"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-1-paumelles-g"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+      <g
+         id="paumelle-2-g"
+         transform="translate(488.80688,41.316162)"
+         inkscape:label="paumelle-2-g">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-2-paumelle-g"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-2-paumelles-g"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+      <g
+         id="paumelle-3-g"
+         transform="translate(488.80688,-596.18384)">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-3-paumelle-g"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-3-paumelles-g"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+      <g
+         id="paumelle-4-g"
+         transform="translate(488.80688,-856.18384)">
+        <rect
+           style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="corps-4-paumelles-g"
+           width="20"
+           height="146"
+           x="3057.0305"
+           y="3041.9338" />
+        <rect
+           style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:1.5;stroke-linejoin:round"
+           id="rondelle-4-paumelles-g"
+           width="20"
+           height="6"
+           x="3056.9431"
+           y="3112.1089" />
+      </g>
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       id="layer2"
+       inkscape:label="#layer-pivot"
+       style="display:inline">
+      <rect
+         style="display:none;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-dasharray:none;stroke-opacity:1"
+         id="pivot-g-contour-systeme"
+         width="69.045609"
+         height="2079.0457"
+         x="3570.4771"
+         y="2000.4772" />
+      <rect
+         style="display:inline;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-dasharray:none;stroke-opacity:1"
+         id="pivot-d-contour-systeme"
+         width="69.045609"
+         height="2079.0457"
+         x="4360.2002"
+         y="2000.4772" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer12"
+     inkscape:label="#layer-poignee">
+    <g
+       inkscape:groupmode="layer"
+       id="layer11"
+       inkscape:label="#layer-baton-marechal-g"
+       transform="translate(1776.25,798.74999)"
+       style="display:none">
+      <rect
+         style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1;stroke-linejoin:round;stroke-dasharray:none"
+         id="plat-haut-baton-marechal-g"
+         width="80"
+         height="8"
+         x="1800.75"
+         y="2000.75" />
+      <rect
+         style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1;stroke-linejoin:round;stroke-dasharray:none"
+         id="plat-bas-baton-marechal-g"
+         width="80"
+         height="8"
+         x="1800.75"
+         y="2492.75" />
+      <rect
+         style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:0.999948;stroke-linejoin:round;stroke-dasharray:none"
+         id="barre-inox-baton-marechal-g"
+         width="38.551052"
+         height="484.00006"
+         x="1840.5"
+         y="2008.7" />
+      <rect
+         style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:0.999613;stroke-linejoin:round;stroke-dasharray:none"
+         id="plat-anti-vandal-baton-marechal-g"
+         width="22.883709"
+         height="484.0004"
+         x="1817.4998"
+         y="2008.6997" />
+    </g>
+    <g
+       inkscape:groupmode="layer"
+       id="g7"
+       inkscape:label="#layer-baton-marechal-d"
+       transform="translate(2542.25,798.74999)"
+       style="display:none">
+      <rect
+         style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1;stroke-linejoin:round;stroke-dasharray:none"
+         id="plat-haut-baton-marechal-d"
+         width="80"
+         height="8"
+         x="1800.75"
+         y="2000.75" />
+      <rect
+         style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:1;stroke-linejoin:round;stroke-dasharray:none"
+         id="plat-bas-baton-marechal-d"
+         width="80"
+         height="8"
+         x="1800.75"
+         y="2492.75" />
+      <rect
+         style="opacity:0.886926;fill:#ff0000;stroke:#000000;stroke-width:0.999948;stroke-linejoin:round;stroke-dasharray:none"
+         id="barre-inox-baton-marechal-d"
+         width="38.551052"
+         height="484.00006"
+         x="1803.25"
+         y="2008.7" />
+      <rect
+         style="opacity:0.886926;fill:#00ff00;stroke:#000000;stroke-width:0.999613;stroke-linejoin:round;stroke-dasharray:none"
+         id="plat-anti-vandal-baton-marechal-d"
+         width="22.883709"
+         height="484.0004"
+         x="1841.7998"
+         y="2008.6997" />
+    </g>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer4"
+     inkscape:label="#layer-chassis">
+    <rect
+       style="fill:#ffff00;stroke-width:0.286392;stroke-dasharray:none"
+       id="chassis-remplissage"
+       width="860"
+       height="1960"
+       x="4850"
+       y="2070" />
+    <rect
+       style="opacity:0.886926;fill:#00ff00;stroke:none;stroke-width:0.653904;stroke-linejoin:round"
+       id="chassis-traverse-mobile-v"
+       width="90"
+       height="2100"
+       x="5250"
+       y="1999.8348" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       id="chassis-contour-traverse-mobile-v"
+       width="89.709999"
+       height="1959.7104"
+       x="5250.145"
+       y="2070.1448" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.306788;stroke-dasharray:none"
+       id="chassis-traverse-mobile-h"
+       width="860"
+       height="90"
+       x="4850"
+       y="3000" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.144235;stroke-dasharray:none"
+       id="chassis-traverse-haute"
+       width="1000"
+       height="70"
+       x="4780"
+       y="2000" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.144235;stroke-dasharray:none"
+       id="chassis-traverse-basse"
+       width="1000"
+       height="70"
+       x="4780"
+       y="4030" />
+    <rect
+       style="opacity:0.886926;fill:#00ff00;stroke:none;stroke-width:0.576689;stroke-linejoin:round"
+       id="chassis-montant-gauche"
+       width="70"
+       height="2100"
+       x="4780"
+       y="2000" />
+    <rect
+       style="opacity:0.886926;fill:#00ff00;stroke:none;stroke-width:0.576689;stroke-linejoin:round"
+       id="chassis-montant-droit"
+       width="70"
+       height="2100"
+       x="5710"
+       y="2000" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       id="chassis-contour-ext"
+       width="999"
+       height="2099"
+       x="4780.5"
+       y="2000.5" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-dasharray:none;stroke-opacity:1"
+       id="chassis-contour-int"
+       width="859.10406"
+       height="1959.1041"
+       x="4850.4482"
+       y="2070.448" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-opacity:1;stroke-dasharray:none"
+       id="chassis-contour-traverse-mobile-h"
+       width="858.94299"
+       height="88.942772"
+       x="4850.5283"
+       y="3000.5288" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="#layer-poteau-technique">
+    <rect
+       style="fill:#00ff00;fill-opacity:1;stroke:none;stroke-width:1"
+       id="poteau-technique"
+       width="280"
+       height="2100"
+       x="4500"
+       y="2000" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-opacity:1"
+       id="poteau-technique-interphonie"
+       width="145"
+       height="397.58997"
+       x="4568"
+       y="2801.8999" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-opacity:1;stroke-dasharray:none"
+       id="poteau-technique-contour"
+       width="279.00201"
+       height="2099.002"
+       x="4500.499"
+       y="2000.499" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer6"
+     inkscape:label="#layer-imposte">
+    <rect
+       style="fill:#ffff00;stroke-width:0.299254;stroke-dasharray:none"
+       id="imposte-remplissage"
+       width="2140"
+       height="860"
+       x="3570"
+       y="1070" />
+    <rect
+       style="opacity:0.886926;fill:#00ff00;stroke:none;stroke-width:0.451237;stroke-linejoin:round"
+       id="imposte-traverse-mobile-v"
+       width="90"
+       height="1000"
+       x="4500"
+       y="1000" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:0.660826;stroke-dasharray:none;stroke-opacity:1"
+       id="imposte-contour-traverse-mobile-v"
+       width="89.33918"
+       height="859.33917"
+       x="4500.3306"
+       y="1070.3304" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.483945;stroke-dasharray:none"
+       id="imposte-traverse-mobile-h"
+       width="2140"
+       height="90"
+       x="3570"
+       y="1400" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.21779;stroke-dasharray:none"
+       id="imposte-traverse-haute"
+       width="2280"
+       height="70"
+       x="3500"
+       y="1000" />
+    <rect
+       style="fill:#00ff00;stroke-width:0.21779;stroke-dasharray:none"
+       id="imposte-traverse-basse"
+       width="2280"
+       height="70"
+       x="3500"
+       y="1930.1643" />
+    <rect
+       style="opacity:0.886926;fill:#00ff00;stroke:none;stroke-width:0.397953;stroke-linejoin:round"
+       id="imposte-montant-gauche"
+       width="70"
+       height="1000"
+       x="3500"
+       y="1000" />
+    <rect
+       style="opacity:0.886926;fill:#00ff00;stroke:none;stroke-width:0.397953;stroke-linejoin:round"
+       id="imposte-montant-droit"
+       width="70"
+       height="1000"
+       x="5710"
+       y="1000" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1.04197;stroke-dasharray:none;stroke-opacity:1"
+       id="imposte-contour-ext"
+       width="2278.958"
+       height="998.95801"
+       x="3500.5212"
+       y="1000.521" />
+    <rect
+       style="fill:none;stroke:#000000;stroke-width:1.04481;stroke-dasharray:none;stroke-opacity:1"
+       id="imposte-contour-int"
+       width="2138.9553"
+       height="858.9552"
+       x="3570.4707"
+       y="1070.5225" />
+    <rect
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:1.57276;stroke-dasharray:none;stroke-opacity:1"
+       id="imposte-contour-traverse-mobile-h"
+       width="2138.4272"
+       height="88.37001"
+       x="3570.8147"
+       y="1400.7864" />
+  </g>
+</svg>
