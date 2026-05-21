@@ -13,6 +13,17 @@
   z-index: 10;
 }
 
+@media (max-width: 768px) {
+  .panel {
+    width: 100%;
+    min-width: unset;
+    height: auto;
+    flex: 1;
+    border-right: none;
+    overflow-y: auto;
+  }
+}
+
 .panel__body {
   flex: 1;
   overflow-y: auto;
@@ -30,16 +41,54 @@
 }
 
 /* ═══════════════════════════════════════════════
-   ONGLETS — Pills scrollables
+   BOUTON GÉNÉRALE — fixe au-dessus des onglets
 ═══════════════════════════════════════════════ */
-.panel__tabs {
+.panel__gen-bar {
   flex-shrink: 0;
+  padding: 8px 12px 0;
+}
+
+.panel__gen-btn {
+  width: 100%;
+  padding: 9px 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: rgba(118, 118, 128, 0.1);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: rgba(60, 60, 67, 0.6);
+  transition: all 0.15s var(--ease-apple);
+}
+
+.panel__gen-btn:hover:not(.is-active) {
+  background: rgba(118, 118, 128, 0.16);
+}
+
+.panel__gen-btn.is-active {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   ONGLETS — Pills avec flèche intégrée
+═══════════════════════════════════════════════ */
+.panel__tab-section {
+  flex-shrink: 0;
+  padding-bottom: 10px;
+}
+
+.panel__tabs {
   display: flex;
   gap: 6px;
-  padding: 10px 12px 8px;
+  padding: 8px 12px 18px;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  overscroll-behavior-x: none;
 }
 
 .panel__tabs::-webkit-scrollbar {
@@ -48,47 +97,79 @@
 
 .panel__tab {
   flex-shrink: 0;
-  white-space: nowrap;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 7px 14px;
-  background: rgba(118, 118, 128, 0.12);
+  gap: 2px;
+  padding: 7px 14px 6px;
+  background: rgba(118, 118, 128, 0.1);
   border: none;
-  border-radius: 20px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  color: var(--text-secondary);
   font-family: inherit;
-  transition: all 0.16s var(--ease-apple);
+  min-width: 56px;
+  transition: all 0.15s var(--ease-apple);
+  position: relative;
 }
 
 .panel__tab:hover:not(.is-active) {
-  background: rgba(118, 118, 128, 0.2);
+  background: rgba(118, 118, 128, 0.16);
 }
 
 .panel__tab.is-active {
   background: var(--blue);
-  color: #ffffff;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
 
-.panel__tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--blue);
+/* Flèche animée — cachée par défaut sur tous les tabs */
+.panel__tab::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 9px solid var(--blue);
+  transform: translateX(-50%) translateY(-10px);
+  opacity: 0;
+  transition:
+    transform 0.25s var(--ease-apple),
+    opacity 0.2s var(--ease-apple);
+  pointer-events: none;
+}
+
+/* Flèche visible + descendue quand actif */
+.panel__tab.is-active::after {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.tab__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(60, 60, 67, 0.65);
+  white-space: nowrap;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.panel__tab.is-active .tab__label {
   color: #fff;
+  font-weight: 600;
+}
+
+.tab__dim {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.panel__tab.is-active .tab__dim {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .els-tab {
@@ -157,6 +238,28 @@
   font-weight: 600;
   letter-spacing: -0.01em;
   color: #000000;
+}
+
+/* Tout en majuscules dans l'onglet Générale */
+.panel__body--gen .vitrage-row__label,
+.panel__body--gen .card2__name,
+.panel__body--gen .card2__sub,
+.panel__body--gen .ral-label,
+.panel__body--gen .acc__summary {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.acc__summary {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 6px;
 }
 
 .acc__arr {
@@ -253,6 +356,102 @@
 
 .card2__btn.is-on .card2__sub {
   color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════════
+   VITRAGE — Liste style iOS
+═══════════════════════════════════════════════ */
+.vitrage-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.vitrage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 11px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.vitrage-row:last-of-type {
+  border-bottom: none;
+}
+
+.vitrage-row:hover {
+  background: rgba(60, 60, 67, 0.04);
+}
+
+.vitrage-row__label {
+  font-size: 13px;
+  font-weight: 400;
+  color: #000;
+}
+
+.vitrage-row.is-on .vitrage-row__label {
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.vitrage-row__check {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+/* ── Input custom ── */
+.vitrage-custom {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding-top: 10px;
+}
+
+.vitrage-input {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border: 1.5px solid var(--blue);
+  border-radius: 10px;
+  background: #fff;
+  color: #000;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.vitrage-input::placeholder {
+  color: var(--text-muted);
+}
+
+.vitrage-confirm {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.vitrage-confirm:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.vitrage-confirm:not(:disabled):hover {
+  opacity: 0.85;
 }
 
 /* ═══════════════════════════════════════════════
@@ -1028,4 +1227,50 @@
   color: var(--text-secondary);
   text-align: center;
   margin: 0;
+}
+
+/* ── Barre d'ajout rapide — mobile uniquement ── */
+.mobile-add-bar {
+  display: none;
+  flex-shrink: 0;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.12);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobile-add-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-add-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: rgba(0, 122, 255, 0.08);
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--blue);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.mobile-add-btn:hover {
+  background: rgba(0, 122, 255, 0.15);
+}
+
+/* ── Mobile — doit être en fin de fichier pour ne pas être écrasé ── */
+@media (max-width: 768px) {
+  .mobile-add-bar {
+    display: flex;
+  }
+
+  .panel__footer {
+    display: none;
+  }
 }

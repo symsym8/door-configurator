@@ -69,6 +69,7 @@ export default function Imposte({
       cursor="grab"
       onClick={onSelect}
       onMouseDown={onDragStart}
+      onTouchStart={onDragStart}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >

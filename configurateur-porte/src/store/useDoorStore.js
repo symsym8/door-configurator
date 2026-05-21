@@ -1,7 +1,9 @@
 import { create } from "zustand";
+import { calcImpW } from "../utils/impUtils";
 
 let _travN = 0;
 let _subTravN = 0;
+let _impN = 0;
 
 function equalizedPos(existingCount, innerSize, barSize = 70) {
   const N = existingCount + 1;
@@ -19,6 +21,114 @@ function buildSubZones(nRows, nCols, defaultType = "vitrage") {
   return sz;
 }
 
+// Insère une rangée ou colonne dans subZones sans effacer les remplissages existants.
+// insertIdx = index (0-based) de la nouvelle traverse dans le tableau trié final.
+function preserveSubZonesInsert(
+  oldSZ,
+  axis,
+  insertIdx,
+  nRows,
+  nCols,
+  defaultFill,
+) {
+  const sz = {};
+  for (let r = 0; r < nRows; r++) {
+    for (let c = 0; c < nCols; c++) {
+      let or = r,
+        oc = c;
+      if (axis === "h") {
+        if (r > insertIdx + 1) or = r - 1;
+        else if (r === insertIdx + 1) or = insertIdx;
+      } else {
+        if (c > insertIdx + 1) oc = c - 1;
+        else if (c === insertIdx + 1) oc = insertIdx;
+      }
+      sz[`${r}_${c}`] = oldSZ[`${or}_${oc}`] ?? defaultFill;
+    }
+  }
+  return sz;
+}
+
+// Supprime une rangée ou colonne de subZones sans effacer les remplissages des zones restantes.
+// removeIdx = index (0-based) de la traverse supprimée dans le tableau trié d'origine.
+function preserveSubZonesRemove(
+  oldSZ,
+  axis,
+  removeIdx,
+  nRows,
+  nCols,
+  defaultFill,
+) {
+  const sz = {};
+  for (let r = 0; r < nRows; r++) {
+    for (let c = 0; c < nCols; c++) {
+      let or = r,
+        oc = c;
+      if (axis === "h") {
+        if (r > removeIdx) or = r + 1;
+      } else {
+        if (c > removeIdx) oc = c + 1;
+      }
+      sz[`${r}_${c}`] = oldSZ[`${or}_${oc}`] ?? defaultFill;
+    }
+  }
+  return sz;
+}
+
+// Cherche la plus grande zone libre et retourne la position de la nouvelle traverse dans son centre.
+function bestInsertPos(sorted, innerSize, barSize = 90) {
+  let prev = 0;
+  let bestStart = 0;
+  let bestSize = -1;
+  let bestIdx = 0;
+  for (let i = 0; i <= sorted.length; i++) {
+    const end = i < sorted.length ? sorted[i].pos : innerSize;
+    const size = end - prev;
+    if (size > bestSize) {
+      bestSize = size;
+      bestStart = prev;
+      bestIdx = i;
+    }
+    if (i < sorted.length) prev = sorted[i].pos + barSize;
+  }
+  return {
+    pos: Math.round(bestStart + (bestSize - barSize) / 2),
+    insertIdx: bestIdx,
+  };
+}
+
+function makeImposte(elements, row, h = 300) {
+  _impN++;
+  return {
+    id: `imp-${_impN}`,
+    row,
+    h,
+    coveredIds: elements.map((e) => e.id),
+    travH: [],
+    travV: [],
+    subZones: { "0_0": "vitrage" },
+  };
+}
+
+// Reproduit le layout positionné (même logique que DoorViewer.computeLayout)
+function computePositioned(elements, ouvW, RX_VAL) {
+  const ouvIdx = elements.findIndex((e) => e.type === "ouvrant");
+  if (ouvIdx < 0) return elements.map((e) => ({ ...e, x: RX_VAL }));
+  const result = new Array(elements.length);
+  result[ouvIdx] = { ...elements[ouvIdx], x: RX_VAL };
+  let leftX = RX_VAL;
+  for (let i = ouvIdx - 1; i >= 0; i--) {
+    leftX -= elements[i].w;
+    result[i] = { ...elements[i], x: leftX };
+  }
+  let rightX = RX_VAL + ouvW;
+  for (let i = ouvIdx + 1; i < elements.length; i++) {
+    result[i] = { ...elements[i], x: rightX };
+    rightX += elements[i].w;
+  }
+  return result;
+}
+
 const useDoorStore = create((set) => ({
   W: 1000,
   H: 2100,
@@ -26,47 +136,63 @@ const useDoorStore = create((set) => ({
   ferrage: "paumelles",
   baton: "d",
   fermeture: "ventouse",
+  fermePorte: "ts93",
+  profil: "acier50",
+  vitrage: "STADIP 44.2",
   elements: [
     { id: "ouv", type: "ouvrant", label: "Ouvrant", w: 1000, locked: true },
   ],
   selectedId: null,
   hasOuvrant: false,
-  hasImposte: false,
-  impH: 300,
   traversesH: [],
   zoneTypes: ["vitrage"],
-  impTravH: [],
-  impTravV: [],
-  impSubZones: { "0_0": "vitrage" },
-  hasImposte2: false,
-  impH2: 300,
-  impTravH2: [],
-  impTravV2: [],
-  impSubZones2: { "0_0": "vitrage" },
+  impostes: [], // [{ id, row: 0|1, h, coveredIds, travH, travV, subZones }]
+  elargisseursH: [],
   ralColor: "#373f43",
   strokeColor: "#ffffff",
 
+  toggleElargisseurH: () =>
+    set((s) => {
+      if (s.elargisseursH.length > 0)
+        return { elargisseursH: [], selectedId: null };
+      const newElh = { id: `elh-${Date.now()}`, h: 100, position: "above" };
+      return { elargisseursH: [newElh], selectedId: newElh.id };
+    }),
+
+  setElargisseurHH: (id, h) =>
+    set((s) => ({
+      elargisseursH: s.elargisseursH.map((e) =>
+        e.id === id ? { ...e, h } : e,
+      ),
+    })),
+
+  setElargisseurHPosition: (id, position) =>
+    set((s) => ({
+      elargisseursH: s.elargisseursH.map((e) =>
+        e.id === id ? { ...e, position } : e,
+      ),
+    })),
+
   setW: (W) =>
     set((s) => {
-      const oldImpW = s.elements.reduce((sum, e) => sum + e.w, 0);
-      const newImpW = oldImpW - s.W + W;
-      const oldImpInnerW = oldImpW - 140;
-      const newImpInnerW = newImpW - 140;
-      const scaleV = (travV) =>
-        oldImpInnerW > 0 && travV?.length
-          ? travV.map((t) => ({
-              ...t,
-              pos: Math.round((t.pos * newImpInnerW) / oldImpInnerW),
-            }))
-          : travV;
-      return {
-        W,
-        elements: s.elements.map((el) =>
-          el.type === "ouvrant" ? { ...el, w: W } : el,
-        ),
-        impTravV: scaleV(s.impTravV),
-        impTravV2: scaleV(s.impTravV2),
-      };
+      const newElements = s.elements.map((e) =>
+        e.type === "ouvrant" ? { ...e, w: W } : e,
+      );
+      const scaledImpostes = s.impostes.map((imp) => {
+        const oldW = calcImpW(imp, s.elements, s.hasOuvrant);
+        const newW = calcImpW(imp, newElements, s.hasOuvrant);
+        const oldInnerW = oldW - 140;
+        const newInnerW = newW - 140;
+        if (oldInnerW <= 0 || !imp.travV?.length) return imp;
+        return {
+          ...imp,
+          travV: imp.travV.map((t) => ({
+            ...t,
+            pos: Math.round((t.pos * newInnerW) / oldInnerW),
+          })),
+        };
+      });
+      return { W, elements: newElements, impostes: scaledImpostes };
     }),
   setH: (H) => set({ H }),
   set: (key, val) => set({ [key]: val }),
@@ -78,28 +204,12 @@ const useDoorStore = create((set) => ({
       r * 0.299 + g * 0.587 + b * 0.114 > 128 ? "#000000" : "#ffffff";
     set({ ralColor, strokeColor });
   },
-  setImpH: (impH) => set({ impH }),
-  toggleImposte: () =>
-    set((s) => {
-      if (!s.hasImposte) return { hasImposte: true };
-      // Si imposte 2 existe, elle prend la place de imposte 1
-      if (s.hasImposte2) {
-        return {
-          impH: s.impH2,
-          impTravH: s.impTravH2,
-          impTravV: s.impTravV2,
-          impSubZones: s.impSubZones2,
-          hasImposte2: false,
-          impH2: 300,
-          impTravH2: [],
-          impTravV2: [],
-          impSubZones2: { "0_0": "vitrage" },
-        };
-      }
-      return { hasImposte: false };
-    }),
   selectElement: (id) => set({ selectedId: id }),
-  toggleOuvrant: () => set((s) => ({ hasOuvrant: !s.hasOuvrant })),
+  toggleOuvrant: () =>
+    set((s) => ({
+      hasOuvrant: !s.hasOuvrant,
+      selectedId: !s.hasOuvrant ? "ouv" : s.selectedId,
+    })),
 
   // ── Traverses ouvrant ─────────────────────────────
   addTraverseH: (y) =>
@@ -192,19 +302,25 @@ const useDoorStore = create((set) => ({
     set((s) => {
       const el = s.elements.find((e) => e.id === elId);
       if (!el || (el.travH?.length || 0) >= 3) return s;
-      const innerH = s.H - 140;
+      const innerH = (el.h ?? s.H) - 140;
       const N = (el.travH?.length || 0) + 1;
       if (innerH < N * 90 + (N + 1) * 10) return s;
-      const existing = el.travH || [];
-      const positions = equalizedPos(existing.length, innerH, 90);
+      const sorted = [...(el.travH || [])].sort((a, b) => a.pos - b.pos);
+      const { pos, insertIdx } = bestInsertPos(sorted, innerH);
       _subTravN++;
-      const newTravH = [
-        ...existing.map((t, i) => ({ ...t, pos: positions[i] })),
-        { id: `cht-${_subTravN}`, pos: positions[existing.length] },
-      ].sort((a, b) => a.pos - b.pos);
+      const newTravH = [...sorted, { id: `cht-${_subTravN}`, pos }].sort(
+        (a, b) => a.pos - b.pos,
+      );
       const nRows = newTravH.length + 1;
       const nCols = (el.travV?.length || 0) + 1;
-      const subZones = buildSubZones(nRows, nCols, el.fill || "vitrage");
+      const subZones = preserveSubZonesInsert(
+        el.subZones || {},
+        "h",
+        insertIdx,
+        nRows,
+        nCols,
+        el.fill || "vitrage",
+      );
       return {
         elements: s.elements.map((e) =>
           e.id === elId ? { ...e, travH: newTravH, subZones } : e,
@@ -219,16 +335,22 @@ const useDoorStore = create((set) => ({
       const innerW = el.w - 140;
       const N = (el.travV?.length || 0) + 1;
       if (innerW < N * 90 + (N + 1) * 10) return s;
-      const existing = el.travV || [];
-      const positions = equalizedPos(existing.length, innerW, 90);
+      const sorted = [...(el.travV || [])].sort((a, b) => a.pos - b.pos);
+      const { pos, insertIdx } = bestInsertPos(sorted, innerW);
       _subTravN++;
-      const newTravV = [
-        ...existing.map((t, i) => ({ ...t, pos: positions[i] })),
-        { id: `cvt-${_subTravN}`, pos: positions[existing.length] },
-      ].sort((a, b) => a.pos - b.pos);
+      const newTravV = [...sorted, { id: `cvt-${_subTravN}`, pos }].sort(
+        (a, b) => a.pos - b.pos,
+      );
       const nRows = (el.travH?.length || 0) + 1;
       const nCols = newTravV.length + 1;
-      const subZones = buildSubZones(nRows, nCols, el.fill || "vitrage");
+      const subZones = preserveSubZonesInsert(
+        el.subZones || {},
+        "v",
+        insertIdx,
+        nRows,
+        nCols,
+        el.fill || "vitrage",
+      );
       return {
         elements: s.elements.map((e) =>
           e.id === elId ? { ...e, travV: newTravV, subZones } : e,
@@ -241,12 +363,19 @@ const useDoorStore = create((set) => ({
       const el = s.elements.find((e) => e.id === elId);
       if (!el) return s;
       const key = axis === "h" ? "travH" : "travV";
-      const newTrav = (el[key] || []).filter((t) => t.id !== travId);
+      const sortedOld = [...(el[key] || [])].sort((a, b) => a.pos - b.pos);
+      const removeIdx = sortedOld.findIndex((t) => t.id === travId);
+      const newTrav = sortedOld.filter((t) => t.id !== travId);
       const travH = axis === "h" ? newTrav : el.travH || [];
       const travV = axis === "v" ? newTrav : el.travV || [];
-      const subZones = buildSubZones(
-        travH.length + 1,
-        travV.length + 1,
+      const nRows = travH.length + 1;
+      const nCols = travV.length + 1;
+      const subZones = preserveSubZonesRemove(
+        el.subZones || {},
+        axis,
+        removeIdx,
+        nRows,
+        nCols,
         el.fill || "vitrage",
       );
       return {
@@ -280,7 +409,7 @@ const useDoorStore = create((set) => ({
       const key = axis === "h" ? "travH" : "travV";
       const existing = el[key] || [];
       if (existing.length === 0) return s;
-      const innerSize = axis === "h" ? s.H - 140 : el.w - 140;
+      const innerSize = axis === "h" ? (el.h ?? s.H) - 140 : el.w - 140;
       const positions = equalizedPos(existing.length - 1, innerSize, 90);
       const sorted = [...existing].sort((a, b) => a.pos - b.pos);
       const newTrav = sorted.map((t, i) => ({ ...t, pos: positions[i] }));
@@ -320,171 +449,352 @@ const useDoorStore = create((set) => ({
       ),
     })),
 
-  // ── Traverses imposte ─────────────────────────────
-  addImposteTraverseH: () =>
+  // ── Impostes (tableau unifié) ──────────────────────
+  toggleImposteRow: (row) =>
     set((s) => {
-      if ((s.impTravH?.length || 0) >= 3) return s;
-      const innerH = s.impH - 140;
-      const existing = s.impTravH || [];
-      const positions = equalizedPos(existing.length, innerH, 90);
+      const rowImpostes = s.impostes.filter((i) => i.row === row);
+      if (rowImpostes.length === 0) {
+        const newImp = makeImposte(s.elements, row);
+        return { impostes: [...s.impostes, newImp], selectedId: newImp.id };
+      }
+      // Supprimer la rangée (et la rangée 1 si on supprime la rangée 0)
+      const toRemove = row === 0 ? [0, 1] : [1];
+      return { impostes: s.impostes.filter((i) => !toRemove.includes(i.row)) };
+    }),
+
+  removeImposte: (id) =>
+    set((s) => {
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      let filtered = s.impostes.filter((i) => i.id !== id);
+      // Si on supprime la dernière imposte row=0, supprimer aussi row=1
+      if (imp.row === 0 && !filtered.some((i) => i.row === 0)) {
+        filtered = filtered.filter((i) => i.row !== 1);
+      }
+      return { impostes: filtered };
+    }),
+
+  setImposteH: (id, h) =>
+    set((s) => ({
+      impostes: s.impostes.map((i) => (i.id === id ? { ...i, h } : i)),
+    })),
+
+  // Divise une imposte en une imposte par élément couvert
+  splitImposte: (id) =>
+    set((s) => {
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      const covered = s.elements.filter(
+        (e) =>
+          imp.coveredIds.includes(e.id) &&
+          !(e.type === "ouvrant" && !s.hasOuvrant),
+      );
+      if (covered.length <= 1) return s;
+      const newImpostes = covered.map((el) => {
+        _impN++;
+        return {
+          id: `imp-${_impN}`,
+          row: imp.row,
+          h: imp.h,
+          coveredIds: [el.id],
+          travH: [],
+          travV: [],
+          subZones: { "0_0": "vitrage" },
+        };
+      });
+      return {
+        impostes: [...s.impostes.filter((i) => i.id !== id), ...newImpostes],
+      };
+    }),
+
+  // Fusionne toutes les impostes de la même rangée en une seule
+  mergeImposteRow: (row) =>
+    set((s) => {
+      const rowImpostes = s.impostes.filter((i) => i.row === row);
+      if (rowImpostes.length <= 1) return s;
+      const allCoveredIds = [
+        ...new Set(rowImpostes.flatMap((i) => i.coveredIds)),
+      ];
+      const maxH = Math.max(...rowImpostes.map((i) => i.h));
+      _impN++;
+      const merged = {
+        id: `imp-${_impN}`,
+        row,
+        h: maxH,
+        coveredIds: allCoveredIds,
+        travH: [],
+        travV: [],
+        subZones: { "0_0": "vitrage" },
+      };
+      return {
+        impostes: [...s.impostes.filter((i) => i.row !== row), merged],
+      };
+    }),
+
+  swapImposteRows: () =>
+    set((s) => ({
+      impostes: s.impostes.map((i) => ({ ...i, row: i.row === 0 ? 1 : 0 })),
+    })),
+
+  // ── Traverses imposte (génériques par id) ─────────
+  addImpTravH: (id) =>
+    set((s) => {
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp || (imp.travH?.length || 0) >= 3) return s;
+      const innerH = imp.h - 140;
+      const N = (imp.travH?.length || 0) + 1;
+      if (innerH < N * 90 + (N + 1) * 10) return s;
+      const sorted = [...(imp.travH || [])].sort((a, b) => a.pos - b.pos);
+      const { pos, insertIdx } = bestInsertPos(sorted, innerH);
       _subTravN++;
-      const newTravH = [
-        ...existing.map((t, i) => ({ ...t, pos: positions[i] })),
-        { id: `iht-${_subTravN}`, pos: positions[existing.length] },
-      ].sort((a, b) => a.pos - b.pos);
+      const newTravH = [...sorted, { id: `iht-${_subTravN}`, pos }].sort(
+        (a, b) => a.pos - b.pos,
+      );
       const nRows = newTravH.length + 1;
-      const nCols = (s.impTravV?.length || 0) + 1;
+      const nCols = (imp.travV?.length || 0) + 1;
+      const subZones = preserveSubZonesInsert(
+        imp.subZones || {},
+        "h",
+        insertIdx,
+        nRows,
+        nCols,
+        "vitrage",
+      );
       return {
-        impTravH: newTravH,
-        impSubZones: buildSubZones(nRows, nCols),
+        impostes: s.impostes.map((i) =>
+          i.id === id ? { ...i, travH: newTravH, subZones } : i,
+        ),
       };
     }),
 
-  addImposteTraverseV: (impW) =>
+  addImpTravV: (id, impW) =>
     set((s) => {
-      if ((s.impTravV?.length || 0) >= 3) return s;
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp || (imp.travV?.length || 0) >= 8) return s;
       const innerW = impW - 140;
-      const existing = s.impTravV || [];
-      const positions = equalizedPos(existing.length, innerW, 90);
+      const N = (imp.travV?.length || 0) + 1;
+      if (innerW < N * 90 + (N + 1) * 10) return s;
+      const sorted = [...(imp.travV || [])].sort((a, b) => a.pos - b.pos);
+      const { pos, insertIdx } = bestInsertPos(sorted, innerW);
       _subTravN++;
-      const newTravV = [
-        ...existing.map((t, i) => ({ ...t, pos: positions[i] })),
-        { id: `ivt-${_subTravN}`, pos: positions[existing.length] },
-      ].sort((a, b) => a.pos - b.pos);
-      const nRows = (s.impTravH?.length || 0) + 1;
+      const newTravV = [...sorted, { id: `ivt-${_subTravN}`, pos }].sort(
+        (a, b) => a.pos - b.pos,
+      );
+      const nRows = (imp.travH?.length || 0) + 1;
       const nCols = newTravV.length + 1;
+      const subZones = preserveSubZonesInsert(
+        imp.subZones || {},
+        "v",
+        insertIdx,
+        nRows,
+        nCols,
+        "vitrage",
+      );
       return {
-        impTravV: newTravV,
-        impSubZones: buildSubZones(nRows, nCols),
+        impostes: s.impostes.map((i) =>
+          i.id === id ? { ...i, travV: newTravV, subZones } : i,
+        ),
       };
     }),
 
-  removeImposteTraverse: (axis, travId) =>
+  removeImpTrav: (id, axis, travId) =>
     set((s) => {
-      const key = axis === "h" ? "impTravH" : "impTravV";
-      const newTrav = (s[key] || []).filter((t) => t.id !== travId);
-      const travH = axis === "h" ? newTrav : s.impTravH || [];
-      const travV = axis === "v" ? newTrav : s.impTravV || [];
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      const key = axis === "h" ? "travH" : "travV";
+      const sortedOld = [...(imp[key] || [])].sort((a, b) => a.pos - b.pos);
+      const removeIdx = sortedOld.findIndex((t) => t.id === travId);
+      const newTrav = sortedOld.filter((t) => t.id !== travId);
+      const travH = axis === "h" ? newTrav : imp.travH || [];
+      const travV = axis === "v" ? newTrav : imp.travV || [];
+      const nRows = travH.length + 1;
+      const nCols = travV.length + 1;
+      const subZones = preserveSubZonesRemove(
+        imp.subZones || {},
+        axis,
+        removeIdx,
+        nRows,
+        nCols,
+        "vitrage",
+      );
       return {
-        [key]: newTrav,
-        impSubZones: buildSubZones(travH.length + 1, travV.length + 1),
+        impostes: s.impostes.map((i) =>
+          i.id === id ? { ...i, [key]: newTrav, subZones } : i,
+        ),
       };
     }),
 
-  updateImposteTraverse: (axis, travId, pos) =>
+  updateImpTrav: (id, axis, travId, pos) =>
     set((s) => {
-      const key = axis === "h" ? "impTravH" : "impTravV";
-      const others = (s[key] || []).filter((t) => t.id !== travId);
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      const key = axis === "h" ? "travH" : "travV";
+      const others = (imp[key] || []).filter((t) => t.id !== travId);
       if (others.some((t) => Math.abs(t.pos - pos) < 100)) return s;
-      const arr = (s[key] || [])
+      const arr = (imp[key] || [])
         .map((t) => (t.id === travId ? { ...t, pos } : t))
         .sort((a, b) => a.pos - b.pos);
-      return { [key]: arr };
+      return {
+        impostes: s.impostes.map((i) =>
+          i.id === id ? { ...i, [key]: arr } : i,
+        ),
+      };
     }),
 
-  equalizeImposteTraverses: (axis, innerSize) =>
+  equalizeImpTravs: (id, axis, innerSize) =>
     set((s) => {
-      const key = axis === "h" ? "impTravH" : "impTravV";
-      const existing = s[key] || [];
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      const key = axis === "h" ? "travH" : "travV";
+      const existing = imp[key] || [];
       if (existing.length === 0) return s;
       const positions = equalizedPos(existing.length - 1, innerSize, 90);
       const sorted = [...existing].sort((a, b) => a.pos - b.pos);
-      return { [key]: sorted.map((t, i) => ({ ...t, pos: positions[i] })) };
-    }),
-
-  updateImposteSubZone: (zoneKey, type) =>
-    set((s) => ({
-      impSubZones: { ...s.impSubZones, [zoneKey]: type },
-    })),
-
-  // ── Imposte 2 ─────────────────────────────────────
-  toggleImposte2: () =>
-    set((s) => ({
-      hasImposte2: s.hasImposte ? !s.hasImposte2 : s.hasImposte2,
-    })),
-
-  swapImpostes: () =>
-    set((s) => ({
-      impH: s.impH2,
-      impTravH: s.impTravH2,
-      impTravV: s.impTravV2,
-      impSubZones: s.impSubZones2,
-      impH2: s.impH,
-      impTravH2: s.impTravH,
-      impTravV2: s.impTravV,
-      impSubZones2: s.impSubZones,
-    })),
-  setImpH2: (impH2) => set({ impH2 }),
-
-  addImposteTraverseH2: () =>
-    set((s) => {
-      if ((s.impTravH2?.length || 0) >= 3) return s;
-      const innerH = s.impH2 - 140;
-      const existing = s.impTravH2 || [];
-      const positions = equalizedPos(existing.length, innerH, 90);
-      _subTravN++;
-      const newTravH = [
-        ...existing.map((t, i) => ({ ...t, pos: positions[i] })),
-        { id: `iht2-${_subTravN}`, pos: positions[existing.length] },
-      ].sort((a, b) => a.pos - b.pos);
-      const nRows = newTravH.length + 1;
-      const nCols = (s.impTravV2?.length || 0) + 1;
-      return { impTravH2: newTravH, impSubZones2: buildSubZones(nRows, nCols) };
-    }),
-
-  addImposteTraverseV2: (impW) =>
-    set((s) => {
-      if ((s.impTravV2?.length || 0) >= 3) return s;
-      const innerW = impW - 140;
-      const existing = s.impTravV2 || [];
-      const positions = equalizedPos(existing.length, innerW, 90);
-      _subTravN++;
-      const newTravV = [
-        ...existing.map((t, i) => ({ ...t, pos: positions[i] })),
-        { id: `ivt2-${_subTravN}`, pos: positions[existing.length] },
-      ].sort((a, b) => a.pos - b.pos);
-      const nRows = (s.impTravH2?.length || 0) + 1;
-      const nCols = newTravV.length + 1;
-      return { impTravV2: newTravV, impSubZones2: buildSubZones(nRows, nCols) };
-    }),
-
-  removeImposteTraverse2: (axis, travId) =>
-    set((s) => {
-      const key = axis === "h" ? "impTravH2" : "impTravV2";
-      const newTrav = (s[key] || []).filter((t) => t.id !== travId);
-      const travH = axis === "h" ? newTrav : s.impTravH2 || [];
-      const travV = axis === "v" ? newTrav : s.impTravV2 || [];
       return {
-        [key]: newTrav,
-        impSubZones2: buildSubZones(travH.length + 1, travV.length + 1),
+        impostes: s.impostes.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                [key]: sorted.map((t, idx) => ({ ...t, pos: positions[idx] })),
+              }
+            : i,
+        ),
       };
     }),
 
-  updateImposteTraverse2: (axis, travId, pos) =>
-    set((s) => {
-      const key = axis === "h" ? "impTravH2" : "impTravV2";
-      const others = (s[key] || []).filter((t) => t.id !== travId);
-      if (others.some((t) => Math.abs(t.pos - pos) < 100)) return s;
-      const arr = (s[key] || [])
-        .map((t) => (t.id === travId ? { ...t, pos } : t))
-        .sort((a, b) => a.pos - b.pos);
-      return { [key]: arr };
-    }),
-
-  equalizeImposteTraverses2: (axis, innerSize) =>
-    set((s) => {
-      const key = axis === "h" ? "impTravH2" : "impTravV2";
-      const existing = s[key] || [];
-      if (existing.length === 0) return s;
-      const positions = equalizedPos(existing.length - 1, innerSize, 90);
-      const sorted = [...existing].sort((a, b) => a.pos - b.pos);
-      return { [key]: sorted.map((t, i) => ({ ...t, pos: positions[i] })) };
-    }),
-
-  updateImposteSubZone2: (zoneKey, type) =>
+  setBothRowsH: (row0H, row1H) =>
     set((s) => ({
-      impSubZones2: { ...s.impSubZones2, [zoneKey]: type },
+      impostes: s.impostes.map((i) => {
+        if (i.row === 0)
+          return { ...i, h: Math.max(100, Math.min(800, Math.round(row0H))) };
+        if (i.row === 1)
+          return { ...i, h: Math.max(100, Math.min(800, Math.round(row1H))) };
+        return i;
+      }),
     })),
+
+  updateImpSubZone: (id, zoneKey, type) =>
+    set((s) => ({
+      impostes: s.impostes.map((i) =>
+        i.id === id
+          ? { ...i, subZones: { ...i.subZones, [zoneKey]: type } }
+          : i,
+      ),
+    })),
+
+  // Met à jour coveredIds d'une imposte ET retire les éléments pris aux voisines de même rangée
+  // Si une voisine devient vide, elle est supprimée
+  claimCoveredIds: (id, newCoveredIds) =>
+    set((s) => {
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      const updated = s.impostes
+        .map((i) => {
+          if (i.id === id) {
+            return {
+              ...i,
+              coveredIds: newCoveredIds,
+              travV: [],
+              subZones: buildSubZones((i.travH?.length || 0) + 1, 1),
+            };
+          }
+          if (i.row === imp.row) {
+            const filtered = i.coveredIds.filter(
+              (cid) => !newCoveredIds.includes(cid),
+            );
+            if (filtered.length === i.coveredIds.length) return i; // rien changé
+            if (filtered.length === 0) return null; // sera supprimée
+            return {
+              ...i,
+              coveredIds: filtered,
+              travV: [],
+              subZones: buildSubZones((i.travH?.length || 0) + 1, 1),
+            };
+          }
+          return i;
+        })
+        .filter(Boolean);
+      return { impostes: updated };
+    }),
+
+  updateImposteCoveredIds: (id, coveredIds) =>
+    set((s) => ({
+      impostes: s.impostes.map((i) =>
+        i.id === id
+          ? {
+              ...i,
+              coveredIds,
+              travV: [],
+              subZones: buildSubZones((i.travH?.length || 0) + 1, 1),
+            }
+          : i,
+      ),
+    })),
+
+  addImposteSegment: (row, coveredIds, h = 300) =>
+    set((s) => {
+      _impN++;
+      return {
+        impostes: [
+          ...s.impostes,
+          {
+            id: `imp-${_impN}`,
+            row,
+            h,
+            coveredIds,
+            travH: [],
+            travV: [],
+            subZones: { "0_0": "vitrage" },
+          },
+        ],
+      };
+    }),
+
+  alignImposteToEls: (id) =>
+    set((s) => {
+      const imp = s.impostes.find((i) => i.id === id);
+      if (!imp) return s;
+      const RX_VAL = 3500;
+      const IM = 70;
+      const BAR = 90;
+      const ouvW = s.hasOuvrant ? s.W : 0;
+      const positioned = computePositioned(s.elements, ouvW, RX_VAL);
+      const covered = positioned.filter(
+        (p) =>
+          imp.coveredIds.includes(p.id) &&
+          !(
+            s.elements.find((e) => e.id === p.id)?.type === "ouvrant" &&
+            !s.hasOuvrant
+          ),
+      );
+      if (covered.length < 2) return s;
+      const impX = Math.min(...covered.map((p) => p.x));
+      const impEndX = Math.max(...covered.map((p) => p.x + p.w));
+      const innerX = impX + IM;
+      const innerW = impEndX - impX - 2 * IM;
+      const sortedCovered = [...covered].sort((a, b) => a.x - b.x);
+      _subTravN++;
+      const newTravV = [];
+      for (let i = 0; i < sortedCovered.length - 1; i++) {
+        const el = sortedCovered[i];
+        const pos = el.x + el.w - innerX - Math.floor(BAR / 2);
+        if (pos > 10 && pos < innerW - BAR - 10)
+          newTravV.push({ id: `ivt-al-${_subTravN}-${i}`, pos });
+      }
+      if (newTravV.length === 0) return s;
+      const nRows = (imp.travH?.length || 0) + 1;
+      return {
+        impostes: s.impostes.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                travV: newTravV,
+                subZones: buildSubZones(nRows, newTravV.length + 1),
+              }
+            : i,
+        ),
+      };
+    }),
 
   // ── Éléments ──────────────────────────────────────
   addElement: (type, side = "right") =>
@@ -494,13 +804,18 @@ const useDoorStore = create((set) => ({
       const chassisN =
         s.elements.filter((e) => e.type === "chassis").length + 1;
       const label =
-        type === "chassis" ? `Châssis ${chassisN}` : "Poteau Technique";
-      const w = type === "chassis" ? 500 : 280;
+        type === "chassis"
+          ? `Châssis ${chassisN}`
+          : type === "elargisseur"
+            ? "Élargisseur"
+            : "Poteau Technique";
+      const w = type === "chassis" ? 500 : type === "elargisseur" ? 100 : 280;
       const el = {
         id,
         type,
         label,
         w,
+        h: type === "chassis" ? s.H : undefined,
         locked: false,
         fill: "vitrage",
         travH: [],
@@ -516,14 +831,43 @@ const useDoorStore = create((set) => ({
       } else {
         arr.push(el);
       }
-      return { elements: arr, selectedId: id };
+      // Ajouter le nouvel élément aux impostes "globales" (qui couvraient tous les éléments)
+      const currentAllIds = s.elements.map((e) => e.id);
+      const newImpostes = s.impostes.map((imp) => {
+        const coversAll = currentAllIds.every((eid) =>
+          imp.coveredIds.includes(eid),
+        );
+        if (coversAll) {
+          return {
+            ...imp,
+            coveredIds: [...imp.coveredIds, id],
+            travV: [],
+            subZones: buildSubZones((imp.travH?.length || 0) + 1, 1),
+          };
+        }
+        return imp;
+      });
+      return { elements: arr, selectedId: id, impostes: newImpostes };
     }),
 
   removeElement: (id) =>
-    set((s) => ({
-      elements: s.elements.filter((el) => el.id !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    })),
+    set((s) => {
+      let newImpostes = s.impostes
+        .map((imp) => ({
+          ...imp,
+          coveredIds: imp.coveredIds.filter((cid) => cid !== id),
+        }))
+        .filter((imp) => imp.coveredIds.length > 0);
+      // Si plus d'impostes row=0, supprimer row=1
+      if (!newImpostes.some((i) => i.row === 0)) {
+        newImpostes = newImpostes.filter((i) => i.row !== 1);
+      }
+      return {
+        elements: s.elements.filter((el) => el.id !== id),
+        selectedId: s.selectedId === id ? null : s.selectedId,
+        impostes: newImpostes,
+      };
+    }),
 
   moveElement: (id, dir) =>
     set((s) => {
@@ -562,11 +906,16 @@ const useDoorStore = create((set) => ({
       const el = s.elements.find((e) => e.id === id);
       if (!el) return s;
 
+      if (el.type === "elargisseur") {
+        return {
+          elements: s.elements.map((e) => (e.id === id ? { ...e, w } : e)),
+        };
+      }
+
       const nV = el.travV?.length || 0;
       const minW = 150 + nV * 100;
       const clampedW = Math.max(w, minW);
 
-      // Scale travV du châssis proportionnellement puis re-equalise si zones invalides
       const oldInnerW = el.w - 140;
       const newInnerW = clampedW - 140;
       const scaled =
@@ -590,25 +939,61 @@ const useDoorStore = create((set) => ({
         ? scaled
         : sorted.map((t, i) => ({ ...t, pos: eqPos[i] }));
 
-      // Scale impTravV de l'imposte proportionnellement
-      const oldImpW = s.elements.reduce((sum, e) => sum + e.w, 0);
-      const newImpW = oldImpW - el.w + w;
-      const oldImpInnerW = oldImpW - 140;
-      const newImpInnerW = newImpW - 140;
-      const scaleImpV = (travV) =>
-        oldImpInnerW > 0 && travV?.length
-          ? travV.map((t) => ({
-              ...t,
-              pos: Math.round((t.pos * newImpInnerW) / oldImpInnerW),
-            }))
-          : travV;
+      const newElements = s.elements.map((e) =>
+        e.id === id ? { ...e, w: clampedW, travV: scaledTravV } : e,
+      );
 
+      // Scale travV des impostes qui couvrent cet élément
+      const scaledImpostes = s.impostes.map((imp) => {
+        if (!imp.coveredIds.includes(id)) return imp;
+        const oldW = calcImpW(imp, s.elements, s.hasOuvrant);
+        const newW = calcImpW(imp, newElements, s.hasOuvrant);
+        const oldIW = oldW - 140;
+        const newIW = newW - 140;
+        if (oldIW <= 0 || !imp.travV?.length) return imp;
+        return {
+          ...imp,
+          travV: imp.travV.map((t) => ({
+            ...t,
+            pos: Math.round((t.pos * newIW) / oldIW),
+          })),
+        };
+      });
+
+      return { elements: newElements, impostes: scaledImpostes };
+    }),
+
+  updateElementH: (id, h) =>
+    set((s) => {
+      const el = s.elements.find((e) => e.id === id);
+      if (!el) return s;
+      const nH = el.travH?.length || 0;
+      const clampedH = Math.max(h, 140 + nH * 100, 200);
+      const oldInnerH = (el.h ?? s.H) - 140;
+      const newInnerH = clampedH - 140;
+      const scaled =
+        oldInnerH > 0 && el.travH?.length
+          ? el.travH.map((t) => ({
+              ...t,
+              pos: Math.round((t.pos * newInnerH) / oldInnerH),
+            }))
+          : el.travH || [];
+      const sorted = [...scaled].sort((a, b) => a.pos - b.pos);
+      const zonesValid =
+        sorted.length === 0 ||
+        (sorted[0].pos >= 10 &&
+          newInnerH - sorted[sorted.length - 1].pos - 90 >= 10 &&
+          sorted.every((t, i) => i === 0 || t.pos - sorted[i - 1].pos >= 100));
+      const eqPos = zonesValid
+        ? null
+        : equalizedPos(sorted.length - 1, newInnerH, 90);
+      const scaledTravH = zonesValid
+        ? scaled
+        : sorted.map((t, i) => ({ ...t, pos: eqPos[i] }));
       return {
         elements: s.elements.map((e) =>
-          e.id === id ? { ...e, w: clampedW, travV: scaledTravV } : e,
+          e.id === id ? { ...e, h: clampedH, travH: scaledTravH } : e,
         ),
-        impTravV: scaleImpV(s.impTravV),
-        impTravV2: scaleImpV(s.impTravV2),
       };
     }),
 

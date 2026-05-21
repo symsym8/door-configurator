@@ -18,6 +18,7 @@ export default function PT({ ox, ew, H, selected, onSelect, onDragStart }) {
       cursor="grab"
       onClick={onSelect}
       onMouseDown={onDragStart}
+      onTouchStart={onDragStart}
     >
       <rect x={ox} y={RY} width={ew} height={H} fill={ralColor} />
       <rect

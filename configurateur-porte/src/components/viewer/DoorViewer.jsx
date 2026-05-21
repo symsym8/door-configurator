@@ -4,11 +4,13 @@ import { RX, RY } from "../../constants/svgRef";
 import Dormant from "./Dormant";
 import Ouvrant from "./Ouvrant";
 import Paumelles from "./Paumelles";
-import Pivot from "./Pivot";
+import Pivot, { PivotBas } from "./Pivot";
 import Baton from "./Baton";
 import Ventouse from "./Ventouse";
 import Chassis from "./Chassis";
 import PT from "./PT";
+import Elargisseur from "./Elargisseur";
+import ElargisseurH from "./ElargisseurH";
 import Imposte from "./Imposte";
 import FillSwitch from "./FillSwitch";
 import "./DoorViewer.css";
@@ -18,25 +20,20 @@ const PADDING = 250;
 function computeLayout(elements, W) {
   const ouvIdx = elements.findIndex((el) => el.type === "ouvrant");
   const result = new Array(elements.length);
-
   result[ouvIdx] = { ...elements[ouvIdx], x: RX };
-
   let leftX = RX;
   for (let i = ouvIdx - 1; i >= 0; i--) {
     leftX -= elements[i].w;
     result[i] = { ...elements[i], x: leftX };
   }
-
   let rightX = RX + W;
   for (let i = ouvIdx + 1; i < elements.length; i++) {
     result[i] = { ...elements[i], x: rightX };
     rightX += elements[i].w;
   }
-
   return result;
 }
 
-// Convertit un point écran en coordonnées SVG
 function clientToSVG(svgEl, clientX, clientY) {
   const pt = svgEl.createSVGPoint();
   pt.x = clientX;
@@ -44,13 +41,104 @@ function clientToSVG(svgEl, clientX, clientY) {
   return pt.matrixTransform(svgEl.getScreenCTM().inverse());
 }
 
-// Détermine devant quel élément on insère (null = à la fin)
 function computeInsertBefore(positioned, dragId, svgX) {
   const others = positioned.filter((p) => p.id !== dragId);
   for (const el of others) {
     if (svgX < el.x + el.w / 2) return el.id;
   }
   return null;
+}
+
+function calcImpBounds(imp, positioned, elements, hasOuvrant) {
+  const covered = positioned.filter(
+    (p) =>
+      imp.coveredIds.includes(p.id) &&
+      !(elements.find((e) => e.id === p.id)?.type === "ouvrant" && !hasOuvrant),
+  );
+  if (covered.length === 0) return null;
+  const impX = Math.min(...covered.map((p) => p.x));
+  const impEndX = Math.max(...covered.map((p) => p.x + p.w));
+  if (impEndX <= impX) return null;
+  return { impX, impW: impEndX - impX };
+}
+
+// Retourne les groupes d'éléments NON couverts sur une rangée donnée
+function findUncoveredGroups(row, impostes, positioned, elements, hasOuvrant) {
+  const coveredIds = new Set(
+    impostes.filter((i) => i.row === row).flatMap((i) => i.coveredIds),
+  );
+  const visible = positioned
+    .filter(
+      (p) =>
+        !(
+          elements.find((e) => e.id === p.id)?.type === "ouvrant" && !hasOuvrant
+        ),
+    )
+    .sort((a, b) => a.x - b.x);
+
+  const groups = [];
+  let cur = [];
+  for (const p of visible) {
+    if (!coveredIds.has(p.id)) {
+      cur.push(p);
+    } else if (cur.length > 0) {
+      groups.push(cur);
+      cur = [];
+    }
+  }
+  if (cur.length > 0) groups.push(cur);
+  return groups;
+}
+
+// Calcule les coveredIds après drag d'un bord — supporte rétrécissement ET extension
+function calcNewCoveredIds(
+  imp,
+  edge,
+  svgX,
+  positioned,
+  elements,
+  hasOuvrant,
+  allImpostes,
+) {
+  // Tous les éléments visibles triés par position
+  const allVisible = positioned
+    .filter(
+      (p) =>
+        !(
+          elements.find((e) => e.id === p.id)?.type === "ouvrant" && !hasOuvrant
+        ),
+    )
+    .sort((a, b) => a.x - b.x);
+
+  if (allVisible.length === 0) return imp.coveredIds;
+
+  const currentCovered = allVisible.filter((p) =>
+    imp.coveredIds.includes(p.id),
+  );
+  if (currentCovered.length === 0) return imp.coveredIds;
+
+  const leftmostCurrent = currentCovered[0];
+  const rightmostCurrent = currentCovered[currentCovered.length - 1];
+  const leftIdx = allVisible.indexOf(leftmostCurrent);
+  const rightIdx = allVisible.indexOf(rightmostCurrent);
+
+  if (edge === "right") {
+    const newIds = [];
+    for (let i = leftIdx; i < allVisible.length; i++) {
+      const p = allVisible[i];
+      if (p.x + p.w / 2 <= svgX) newIds.push(p.id);
+      else break;
+    }
+    return newIds.length > 0 ? newIds : [leftmostCurrent.id];
+  } else {
+    const newIds = [];
+    for (let i = rightIdx; i >= 0; i--) {
+      const p = allVisible[i];
+      if (p.x + p.w / 2 >= svgX) newIds.unshift(p.id);
+      else break;
+    }
+    return newIds.length > 0 ? newIds : [rightmostCurrent.id];
+  }
 }
 
 export default function DoorViewer() {
@@ -64,44 +152,51 @@ export default function DoorViewer() {
     elements,
     selectedId,
     hasOuvrant,
-    hasImposte,
-    impH,
+    impostes,
     traversesH,
     zoneTypes,
-    impTravH,
-    impTravV,
-    impSubZones,
-    hasImposte2,
-    impH2,
-    impTravH2,
-    impTravV2,
-    impSubZones2,
     selectElement,
     reorderElement,
     updateZoneType,
     updateElementFill,
     updateChassisSubZone,
-    updateImposteSubZone,
-    updateImposteSubZone2,
+    updateImpSubZone,
+    updateImposteCoveredIds,
+    claimCoveredIds,
+    addImposteSegment,
     ralColor,
     strokeColor,
     addElement,
     removeElement,
-    toggleImposte,
-    toggleImposte2,
-    swapImpostes,
+    toggleImposteRow,
+    removeImposte,
+    swapImposteRows,
     toggleOuvrant,
+    setBothRowsH,
+    elargisseursH,
+    toggleElargisseurH,
+    setElargisseurHPosition,
   } = useDoorStore();
 
   const svgRef = useRef(null);
 
-  // État du drag horizontal (éléments)
   const [drag, setDrag] = useState(null);
   const [insertBefore, setInsertBefore] = useState(undefined);
   const [doorHovered, setDoorHovered] = useState(false);
 
-  // État du drag vertical (impostes) — { id: "imp1"|"imp2", startClientY: number } | null
+  // Drag vertical impostes (swap rangées)
   const [dragImp, setDragImp] = useState(null);
+
+  // Drag vertical élargisseur H (swap above/below)
+  const [dragElhV, setDragElhV] = useState(null);
+
+  // Drag horizontal bords imposte (split/resize)
+  // { impId, edge: 'left'|'right', currentX: number }
+  const [edgeDrag, setEdgeDrag] = useState(null);
+
+  // Drag ligne de séparation entre rangées d'impostes
+  // { totalH, startSvgY }
+  const [dragRowBorder, setDragRowBorder] = useState(null);
 
   const layoutElements = useMemo(
     () =>
@@ -115,7 +210,6 @@ export default function DoorViewer() {
     [layoutElements, hasOuvrant, W],
   );
 
-  // Toutes les zones de dépôt possibles pendant le drag
   const allDropZones = useMemo(() => {
     if (!drag) return [];
     const zones = positioned.map((el) => ({
@@ -129,31 +223,33 @@ export default function DoorViewer() {
     return zones;
   }, [drag, positioned]);
 
-  // Handlers fenêtre (mousemove / mouseup) pendant le drag
+  // Drag éléments horizontaux
   useEffect(() => {
     if (!drag) return;
-
     const onMove = (e) => {
       if (!svgRef.current) return;
-      const { x: svgX } = clientToSVG(svgRef.current, e.clientX, e.clientY);
+      if (e.cancelable) e.preventDefault();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const { x: svgX } = clientToSVG(svgRef.current, clientX, clientY);
       setDrag((d) => (d ? { ...d, svgX } : d));
       const ib = computeInsertBefore(positioned, drag.id, svgX);
       setInsertBefore(ib);
     };
-
     const onUp = () => {
-      if (insertBefore !== undefined) {
-        reorderElement(drag.id, insertBefore);
-      }
+      if (insertBefore !== undefined) reorderElement(drag.id, insertBefore);
       setDrag(null);
       setInsertBefore(undefined);
     };
-
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
     };
   }, [drag, insertBefore, positioned, reorderElement]);
 
@@ -161,57 +257,153 @@ export default function DoorViewer() {
     e.preventDefault();
     e.stopPropagation();
     selectElement(id);
-    // eslint-disable-next-line react-hooks/refs
-    const { x: svgX } = clientToSVG(svgRef.current, e.clientX, e.clientY);
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const { x: svgX } = clientToSVG(svgRef.current, clientX, clientY);
     setDrag({ id, svgX });
     setInsertBefore(undefined);
   };
 
-  // Drag vertical impostes : swap après 30px écran de glissement
+  // Drag vertical impostes : swap rangées après 30px
   useEffect(() => {
     if (!dragImp) return;
-
+    const imp = impostes.find((i) => i.id === dragImp.impId);
     const onMove = (e) => {
-      const delta = e.clientY - dragImp.startClientY;
+      if (e.cancelable) e.preventDefault();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const delta = clientY - dragImp.startClientY;
       const shouldSwap =
-        (dragImp.id === "imp1" && delta < -30) ||
-        (dragImp.id === "imp2" && delta > 30);
+        (imp?.row === 0 && delta < -30) || (imp?.row === 1 && delta > 30);
       if (shouldSwap) {
         window.removeEventListener("mousemove", onMove);
-        swapImpostes();
+        window.removeEventListener("touchmove", onMove);
+        swapImposteRows();
         setDragImp(null);
       }
     };
-
     const onUp = () => setDragImp(null);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [dragImp, impostes, swapImposteRows]);
 
+  // Drag bord imposte : resize/split (mise à jour EN DIRECT à chaque déplacement)
+  useEffect(() => {
+    if (!edgeDrag) return;
+    const onMove = (e) => {
+      if (!svgRef.current) return;
+      const { x: svgX } = clientToSVG(svgRef.current, e.clientX, e.clientY);
+      setEdgeDrag((d) => (d ? { ...d, currentX: svgX } : d));
+      // Applique le transfert en direct (les deux impostes bougent simultanément)
+      const imp = impostes.find((i) => i.id === edgeDrag.impId);
+      if (!imp) return;
+      const newIds = calcNewCoveredIds(
+        imp,
+        edgeDrag.edge,
+        svgX,
+        positioned,
+        elements,
+        hasOuvrant,
+        impostes,
+      );
+      if (newIds.join(",") !== imp.coveredIds.join(",")) {
+        claimCoveredIds(imp.id, newIds);
+      }
+    };
+    const onUp = () => setEdgeDrag(null);
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragImp, swapImpostes]);
+  }, [edgeDrag, impostes, positioned, elements, hasOuvrant, claimCoveredIds]);
 
-  const minX = Math.min(...positioned.map((p) => p.x));
-  const maxX = Math.max(...positioned.map((p) => p.x + p.w));
-  const vbX = minX - PADDING;
-  const vbW = maxX - minX + PADDING * 2;
+  // Drag ligne de séparation entre rangée 0 et rangée 1
+  useEffect(() => {
+    if (!dragRowBorder) return;
+    const onMove = (e) => {
+      if (!svgRef.current) return;
+      const { y: svgY } = clientToSVG(svgRef.current, e.clientX, e.clientY);
+      const newRow0H = Math.max(
+        100,
+        Math.min(dragRowBorder.totalH - 100, Math.round(RY - svgY)),
+      );
+      const newRow1H = dragRowBorder.totalH - newRow0H;
+      setBothRowsH(newRow0H, newRow1H);
+    };
+    const onUp = () => setDragRowBorder(null);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [dragRowBorder, setBothRowsH]);
+
+  // Drag vertical élargisseur H : swap above/below après 30px
+  useEffect(() => {
+    if (!dragElhV) return;
+    const elh = elargisseursH.find((e) => e.id === dragElhV.elhId);
+    if (!elh) return;
+    const onMove = (e) => {
+      if (e.cancelable) e.preventDefault();
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const delta = clientY - dragElhV.startClientY;
+      const shouldSwap =
+        (elh.position === "above" && delta > 30) ||
+        (elh.position === "below" && delta < -30);
+      if (shouldSwap) {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("touchmove", onMove);
+        setElargisseurHPosition(
+          elh.id,
+          elh.position === "above" ? "below" : "above",
+        );
+        setDragElhV(null);
+      }
+    };
+    const onUp = () => setDragElhV(null);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [dragElhV, elargisseursH, setElargisseurHPosition]);
+
+  const rawMinX = Math.min(...positioned.map((p) => p.x));
+  const rawMaxX = Math.max(...positioned.map((p) => p.x + p.w));
   const floorY = RY + H;
-  // Hauteur fixe basée sur H max (2500) → le sol reste toujours à la même position
-  const extraH = (hasImposte ? impH : 0) + (hasImposte2 ? impH2 : 0);
+
+  const row0 = impostes.filter((i) => i.row === 0);
+  const row1 = impostes.filter((i) => i.row === 1);
+  const maxH_row0 = row0.length ? Math.max(...row0.map((i) => i.h)) : 0;
+  const maxH_row1 = row1.length ? Math.max(...row1.map((i) => i.h)) : 0;
+  const elargHTotalH = elargisseursH.reduce((sum, e) => sum + e.h, 0);
+  const elargBelowH = elargisseursH
+    .filter((e) => e.position === "below")
+    .reduce((sum, e) => sum + e.h, 0);
+  const hasElargH = elargisseursH.length > 0;
+  const extraH = maxH_row0 + maxH_row1 + elargHTotalH;
   const vbH = 2500 + PADDING * 2 + extraH;
   const vbY = floorY + PADDING - vbH;
 
-  const impX = positioned.length ? Math.min(...positioned.map((p) => p.x)) : RX;
-  const impEndX = positioned.length
-    ? Math.max(...positioned.map((p) => p.x + p.w))
-    : RX + W;
-
   const chassisEls = positioned.filter((p) => p.type === "chassis");
   const ptEls = positioned.filter((p) => p.type === "pt");
+  const elargisseurEls = positioned.filter((p) => p.type === "elargisseur");
 
-  // Compte les châssis par côté de l'ouvrant
   const ouvIdx = elements.findIndex((e) => e.type === "ouvrant");
   const leftCount = elements
     .slice(0, ouvIdx)
@@ -220,7 +412,15 @@ export default function DoorViewer() {
     .slice(ouvIdx + 1)
     .filter((e) => e.type === "chassis").length;
 
-  // Numérotation dynamique des labels (même logique que ConfigPanel)
+  const isEmptyViewer = !hasOuvrant && leftCount === 0 && rightCount === 0;
+  const isStartScreen =
+    isEmptyViewer && ptEls.length === 0 && impostes.length === 0;
+  const emptyPad = isEmptyViewer ? (3 * (80 * 2 + 30)) / 2 + 80 : 0;
+  const minX = rawMinX - emptyPad;
+  const maxX = rawMaxX + emptyPad;
+  const vbX = minX - PADDING;
+  const vbW = maxX - minX + PADDING * 2;
+
   let _cn = 0;
   const dynLabels = {};
   elements.forEach((el) => {
@@ -232,14 +432,13 @@ export default function DoorViewer() {
   const pivotSide = baton === "d" ? "g" : "d";
   const paumellesSide = baton === "d" ? "g" : "d";
 
-  // Géométrie intérieure de l'ouvrant pour traverses + zones
   const dW = W - 1000;
-  const travInnerLeft = ferrage === "paumelles" ? 3645 : 3660;
+  const travInnerLeft =
+    ferrage === "paumelles" ? 3645 : pivotSide === "g" ? 3660 : 3645;
   const travInnerWidth = ferrage === "paumelles" ? 710 + dW : 695 + dW;
-  const innerTopSVG = 2145; // y SVG du haut de la zone de remplissage (RY + 145)
-  const innerBottomSVG = RY + H - 110; // y SVG du bas de la zone de remplissage
+  const innerTopSVG = 2145;
+  const innerBottomSVG = RY + H - 110;
 
-  // Zones de remplissage (vitrage / tôle)
   const VITRAGE_COLOR = "#c8e8f8";
   const TOLE_COLOR = ralColor;
   const zoneFills = (() => {
@@ -252,14 +451,12 @@ export default function DoorViewer() {
         type: zoneTypes[0] || "vitrage",
       });
     } else {
-      // Zone 0 — en bas, sous la première traverse
       fills.push({
         idx: 0,
         y: floorY - traversesH[0].y,
         h: Math.max(0, traversesH[0].y - 110),
         type: zoneTypes[0] || "vitrage",
       });
-      // Zones intermédiaires
       for (let i = 0; i < traversesH.length - 1; i++) {
         fills.push({
           idx: i + 1,
@@ -268,7 +465,6 @@ export default function DoorViewer() {
           type: zoneTypes[i + 1] || "vitrage",
         });
       }
-      // Zone haute — au-dessus de la dernière traverse
       fills.push({
         idx: traversesH.length,
         y: innerTopSVG,
@@ -309,7 +505,6 @@ export default function DoorViewer() {
     </g>
   );
 
-  // Traverses — de l'intérieur gauche au droit du dormant pour couvrir cint sans déborder
   const travBarX = RX + 70;
   const travBarW = W - 140;
   const traversesBarEl = traversesH.length > 0 && (
@@ -329,6 +524,9 @@ export default function DoorViewer() {
 
   const ouvrantEl = (
     <>
+      {hasOuvrant && ferrage === "pivot" && (
+        <PivotBas W={W} H={H} side={pivotSide} />
+      )}
       {hasOuvrant && <Dormant W={W} H={H} />}
       {hasOuvrant && fermeture === "ventouse" && (
         <Ventouse W={W} H={H} side={baton} />
@@ -348,6 +546,9 @@ export default function DoorViewer() {
 
   const ouvrantElInt = (
     <>
+      {hasOuvrant && ferrage === "pivot" && (
+        <PivotBas W={W} H={H} side={pivotSide} />
+      )}
       {hasOuvrant && <Ouvrant W={W} H={H} ferrage={ferrage} baton={baton} />}
       {hasOuvrant && zoneFillsEl}
       {hasOuvrant && traversesBarEl}
@@ -362,12 +563,15 @@ export default function DoorViewer() {
   const renderChassis = (el) => {
     const fillType = el.fill || "vitrage";
     const hasSubTrav = (el.travH?.length || 0) + (el.travV?.length || 0) > 0;
+    const elH = el.h ?? H;
+    const yOff = H - elH;
     return (
       <g key={el.id} style={{ opacity: drag?.id === el.id ? 0.35 : 1 }}>
         <Chassis
           ox={el.x}
           ew={el.w}
-          H={H}
+          H={elH}
+          yOff={yOff}
           fillType={fillType}
           travH={el.travH || []}
           travV={el.travV || []}
@@ -385,7 +589,7 @@ export default function DoorViewer() {
         {!hasSubTrav && (
           <FillSwitch
             cx={el.x + el.w / 2}
-            cy={RY + H / 2}
+            cy={RY + yOff + elH / 2}
             type={fillType}
             onVitrage={() => updateElementFill(el.id, "vitrage")}
             onTole={() => updateElementFill(el.id, "tole")}
@@ -410,6 +614,215 @@ export default function DoorViewer() {
     />
   );
 
+  const renderElargisseur = (el) => (
+    <Elargisseur
+      key={el.id}
+      ox={el.x}
+      ew={el.w}
+      H={H}
+      selected={selectedId === el.id}
+      onSelect={() => selectElement(el.id)}
+      onDragStart={handleDragStart(el.id)}
+    />
+  );
+
+  const getImposteBaseY = (imp) =>
+    imp.row === 0 ? RY - elargBelowH : RY - elargBelowH - maxH_row0;
+
+  const getElhY = (elh) =>
+    elh.position === "below"
+      ? RY - elh.h
+      : RY - elargBelowH - maxH_row0 - maxH_row1 - elh.h;
+
+  const impLabels = (() => {
+    const labels = [];
+    row0.forEach((imp, idx) => {
+      const bounds = calcImpBounds(imp, positioned, elements, hasOuvrant);
+      if (!bounds) return;
+      const baseY = getImposteBaseY(imp);
+      const text =
+        row0.length === 1 && row1.length === 0
+          ? "Imposte"
+          : `Imposte ${idx + 1}`;
+      labels.push({
+        id: imp.id,
+        x: bounds.impX + bounds.impW / 2,
+        y: baseY - imp.h - 30,
+        text,
+      });
+    });
+    row1.forEach((imp, idx) => {
+      const bounds = calcImpBounds(imp, positioned, elements, hasOuvrant);
+      if (!bounds) return;
+      const baseY = getImposteBaseY(imp);
+      const text = row1.length === 1 ? "Imposte 2" : `Imposte 2.${idx + 1}`;
+      labels.push({
+        id: imp.id,
+        x: bounds.impX + bounds.impW / 2,
+        y: baseY - imp.h - 30,
+        text,
+      });
+    });
+    return labels;
+  })();
+
+  const hasRow0 = row0.length > 0;
+  const hasRow1 = row1.length > 0;
+  const allImpX = positioned.length
+    ? Math.min(...positioned.map((p) => p.x))
+    : RX;
+  const allImpEndX = positioned.length
+    ? Math.max(...positioned.map((p) => p.x + p.w))
+    : RX + W;
+
+  // Preview bords pendant edgeDrag
+  const edgePreview = edgeDrag
+    ? (() => {
+        const imp = impostes.find((i) => i.id === edgeDrag.impId);
+        if (!imp) return null;
+        const newIds = calcNewCoveredIds(
+          imp,
+          edgeDrag.edge,
+          edgeDrag.currentX ?? 0,
+          positioned,
+          elements,
+          hasOuvrant,
+          impostes,
+        );
+        const newPos = positioned
+          .filter((p) => newIds.includes(p.id))
+          .filter(
+            (p) =>
+              !(
+                elements.find((e) => e.id === p.id)?.type === "ouvrant" &&
+                !hasOuvrant
+              ),
+          );
+        if (newPos.length === 0) return null;
+        const pX = Math.min(...newPos.map((p) => p.x));
+        const pEndX = Math.max(...newPos.map((p) => p.x + p.w));
+        const baseY = getImposteBaseY(imp);
+        const splitLineX = edgeDrag.edge === "right" ? pEndX : pX;
+        return { pX, pW: pEndX - pX, baseY, imp, splitLineX };
+      })()
+    : null;
+
+  const renderImpostes = () =>
+    impostes.map((imp) => {
+      const bounds = calcImpBounds(imp, positioned, elements, hasOuvrant);
+      if (!bounds) return null;
+      const baseY = getImposteBaseY(imp);
+      const isBeingEdgeDragged = edgeDrag?.impId === imp.id;
+      return (
+        <g
+          key={imp.id}
+          style={{
+            opacity:
+              dragImp?.impId === imp.id ? 0.35 : isBeingEdgeDragged ? 0.4 : 1,
+          }}
+        >
+          <Imposte
+            uid={imp.id}
+            impX={bounds.impX}
+            impW={bounds.impW}
+            impH={imp.h}
+            baseY={baseY}
+            travH={imp.travH}
+            travV={imp.travV}
+            subZones={imp.subZones}
+            onUpdateSubZone={(zoneKey, type) =>
+              updateImpSubZone(imp.id, zoneKey, type)
+            }
+            selected={selectedId === imp.id}
+            onSelect={(e) => {
+              e.stopPropagation();
+              selectElement(imp.id);
+            }}
+            onDragStart={(e) => {
+              if (edgeDrag) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+              setDragImp({ impId: imp.id, startClientY: clientY });
+            }}
+          />
+        </g>
+      );
+    });
+
+  // Poignées de bord pour chaque imposte
+  const renderEdgeHandles = () =>
+    !drag &&
+    !dragImp &&
+    impostes.map((imp) => {
+      const bounds = calcImpBounds(imp, positioned, elements, hasOuvrant);
+      if (!bounds) return null;
+      const baseY = getImposteBaseY(imp);
+      const impY = baseY - imp.h;
+
+      const HANDLE_W = 52;
+      const HANDLE_H = Math.min(imp.h * 0.45, 240);
+      const handleY = impY + (imp.h - HANDLE_H) / 2;
+      const isActive = edgeDrag?.impId === imp.id;
+
+      return (
+        <g key={`eh-${imp.id}`}>
+          {/* Poignée gauche */}
+          <EdgeHandle
+            cx={bounds.impX}
+            cy={impY + imp.h / 2}
+            w={HANDLE_W}
+            h={HANDLE_H}
+            active={isActive && edgeDrag.edge === "left"}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const { x: svgX } = clientToSVG(
+                svgRef.current,
+                e.clientX,
+                e.clientY,
+              );
+              setEdgeDrag({ impId: imp.id, edge: "left", currentX: svgX });
+            }}
+          />
+          {/* Poignée droite */}
+          <EdgeHandle
+            cx={bounds.impX + bounds.impW}
+            cy={impY + imp.h / 2}
+            w={HANDLE_W}
+            h={HANDLE_H}
+            active={isActive && edgeDrag.edge === "right"}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const { x: svgX } = clientToSVG(
+                svgRef.current,
+                e.clientX,
+                e.clientY,
+              );
+              setEdgeDrag({ impId: imp.id, edge: "right", currentX: svgX });
+            }}
+          />
+        </g>
+      );
+    });
+
+  if (isStartScreen) {
+    return (
+      <div className="viewer-start">
+        {[
+          { label: "Châssis", onClick: () => addElement("chassis", "left") },
+          { label: "Porte", onClick: toggleOuvrant },
+        ].map((btn, i) => (
+          <button key={i} className="start-btn" onClick={btn.onClick}>
+            <span className="start-btn__plus">+</span>
+            <span className="start-btn__label">{btn.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="viewer">
       <svg
@@ -418,7 +831,16 @@ export default function DoorViewer() {
         className="viewer__svg"
         xmlns="http://www.w3.org/2000/svg"
         onClick={() => selectElement(null)}
-        style={{ cursor: drag ? "grabbing" : "default" }}
+        style={{
+          touchAction: "none",
+          cursor: edgeDrag
+            ? "ew-resize"
+            : dragRowBorder
+              ? "ns-resize"
+              : drag
+                ? "grabbing"
+                : "default",
+        }}
       >
         {/* Sol */}
         <line
@@ -432,6 +854,7 @@ export default function DoorViewer() {
 
         {ouv === "ext" ? (
           <>
+            {elargisseurEls.map(renderElargisseur)}
             {chassisEls.map(renderChassis)}
             {ptEls.map(renderPT)}
             <g
@@ -451,10 +874,10 @@ export default function DoorViewer() {
                 selectElement("ouv");
               }}
               onMouseDown={handleDragStart("ouv")}
+              onTouchStart={handleDragStart("ouv")}
               onMouseEnter={() => setDoorHovered(true)}
               onMouseLeave={() => setDoorHovered(false)}
             >
-              {/* Hit-area sur toute la porte */}
               <rect
                 x={RX}
                 y={RY}
@@ -479,62 +902,29 @@ export default function DoorViewer() {
                 />
               )}
             </g>
-            {hasImposte && (
-              <g style={{ opacity: dragImp?.id === "imp1" ? 0.35 : 1 }}>
-                <Imposte
-                  uid="imp1"
-                  impX={impX}
-                  impW={impEndX - impX}
-                  impH={impH}
-                  travH={impTravH}
-                  travV={impTravV}
-                  subZones={impSubZones}
-                  onUpdateSubZone={(zoneKey, type) =>
-                    updateImposteSubZone(zoneKey, type)
-                  }
-                  selected={selectedId === "imp1"}
-                  onSelect={(e) => {
-                    e.stopPropagation();
-                    selectElement("imp1");
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragImp({ id: "imp1", startClientY: e.clientY });
-                  }}
-                />
-              </g>
-            )}
-            {hasImposte && hasImposte2 && (
-              <g style={{ opacity: dragImp?.id === "imp2" ? 0.35 : 1 }}>
-                <Imposte
-                  uid="imp2"
-                  impX={impX}
-                  impW={impEndX - impX}
-                  impH={impH2}
-                  baseY={RY - impH}
-                  travH={impTravH2}
-                  travV={impTravV2}
-                  subZones={impSubZones2}
-                  onUpdateSubZone={(zoneKey, type) =>
-                    updateImposteSubZone2(zoneKey, type)
-                  }
-                  selected={selectedId === "imp2"}
-                  onSelect={(e) => {
-                    e.stopPropagation();
-                    selectElement("imp2");
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragImp({ id: "imp2", startClientY: e.clientY });
-                  }}
-                />
-              </g>
-            )}
+            {renderImpostes()}
+            {elargisseursH.map((elh) => (
+              <ElargisseurH
+                key={elh.id}
+                x={allImpX}
+                y={getElhY(elh)}
+                w={allImpEndX - allImpX}
+                h={elh.h}
+                selected={selectedId === elh.id}
+                onSelect={() => selectElement(elh.id)}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  selectElement(elh.id);
+                  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                  setDragElhV({ elhId: elh.id, startClientY: clientY });
+                }}
+              />
+            ))}
           </>
         ) : (
           <>
+            {elargisseurEls.map(renderElargisseur)}
             {chassisEls.map(renderChassis)}
             {ptEls.map(renderPT)}
             <g
@@ -554,6 +944,7 @@ export default function DoorViewer() {
                 selectElement("ouv");
               }}
               onMouseDown={handleDragStart("ouv")}
+              onTouchStart={handleDragStart("ouv")}
               onMouseEnter={() => setDoorHovered(true)}
               onMouseLeave={() => setDoorHovered(false)}
             >
@@ -581,60 +972,139 @@ export default function DoorViewer() {
                 />
               )}
             </g>
-            {hasImposte && (
-              <g style={{ opacity: dragImp?.id === "imp1" ? 0.35 : 1 }}>
-                <Imposte
-                  uid="imp1"
-                  impX={impX}
-                  impW={impEndX - impX}
-                  impH={impH}
-                  travH={impTravH}
-                  travV={impTravV}
-                  subZones={impSubZones}
-                  onUpdateSubZone={(zoneKey, type) =>
-                    updateImposteSubZone(zoneKey, type)
-                  }
-                  selected={selectedId === "imp1"}
-                  onSelect={(e) => {
-                    e.stopPropagation();
-                    selectElement("imp1");
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragImp({ id: "imp1", startClientY: e.clientY });
-                  }}
-                />
-              </g>
-            )}
-            {hasImposte && hasImposte2 && (
-              <g style={{ opacity: dragImp?.id === "imp2" ? 0.35 : 1 }}>
-                <Imposte
-                  uid="imp2"
-                  impX={impX}
-                  impW={impEndX - impX}
-                  impH={impH2}
-                  baseY={RY - impH}
-                  travH={impTravH2}
-                  travV={impTravV2}
-                  subZones={impSubZones2}
-                  onUpdateSubZone={(zoneKey, type) =>
-                    updateImposteSubZone2(zoneKey, type)
-                  }
-                  selected={selectedId === "imp2"}
-                  onSelect={(e) => {
-                    e.stopPropagation();
-                    selectElement("imp2");
-                  }}
-                  onDragStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragImp({ id: "imp2", startClientY: e.clientY });
-                  }}
-                />
-              </g>
-            )}
+            {renderImpostes()}
+            {elargisseursH.map((elh) => (
+              <ElargisseurH
+                key={elh.id}
+                x={allImpX}
+                y={getElhY(elh)}
+                w={allImpEndX - allImpX}
+                h={elh.h}
+                selected={selectedId === elh.id}
+                onSelect={() => selectElement(elh.id)}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  selectElement(elh.id);
+                  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                  setDragElhV({ elhId: elh.id, startClientY: clientY });
+                }}
+              />
+            ))}
           </>
+        )}
+
+        {/* Poignées de bord impostes */}
+        {renderEdgeHandles()}
+
+        {/* Poignée de séparation entre rangée 0 et rangée 1 */}
+        {hasRow0 && hasRow1 && !drag && !edgeDrag && !dragImp && (
+          <RowBorderHandle
+            y={RY - maxH_row0}
+            x1={allImpX}
+            x2={allImpEndX}
+            active={!!dragRowBorder}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setDragRowBorder({
+                totalH: maxH_row0 + maxH_row1,
+                startSvgY: RY - maxH_row0,
+              });
+            }}
+          />
+        )}
+
+        {/* Boutons + au-dessus des éléments non couverts */}
+        {!drag && !edgeDrag && !dragImp && (
+          <>
+            {hasRow0 &&
+              findUncoveredGroups(
+                0,
+                impostes,
+                positioned,
+                elements,
+                hasOuvrant,
+              ).map((group, i) => {
+                const gX = Math.min(...group.map((p) => p.x));
+                const gEndX = Math.max(...group.map((p) => p.x + p.w));
+                const avgH = row0.length
+                  ? Math.round(
+                      row0.reduce((s, im) => s + im.h, 0) / row0.length,
+                    )
+                  : 300;
+                return (
+                  <SmallPlusBtn
+                    key={`uncov-0-${i}`}
+                    cx={(gX + gEndX) / 2}
+                    cy={RY - avgH / 2}
+                    onClick={() =>
+                      addImposteSegment(
+                        0,
+                        group.map((p) => p.id),
+                        avgH,
+                      )
+                    }
+                  />
+                );
+              })}
+            {hasRow1 &&
+              findUncoveredGroups(
+                1,
+                impostes,
+                positioned,
+                elements,
+                hasOuvrant,
+              ).map((group, i) => {
+                const gX = Math.min(...group.map((p) => p.x));
+                const gEndX = Math.max(...group.map((p) => p.x + p.w));
+                const avgH = row1.length
+                  ? Math.round(
+                      row1.reduce((s, im) => s + im.h, 0) / row1.length,
+                    )
+                  : 300;
+                return (
+                  <SmallPlusBtn
+                    key={`uncov-1-${i}`}
+                    cx={(gX + gEndX) / 2}
+                    cy={RY - maxH_row0 - avgH / 2}
+                    onClick={() =>
+                      addImposteSegment(
+                        1,
+                        group.map((p) => p.id),
+                        avgH,
+                      )
+                    }
+                  />
+                );
+              })}
+          </>
+        )}
+
+        {/* Preview pendant edgeDrag */}
+        {edgePreview && (
+          <g pointerEvents="none">
+            <rect
+              x={edgePreview.pX}
+              y={edgePreview.baseY - edgePreview.imp.h}
+              width={edgePreview.pW}
+              height={edgePreview.imp.h}
+              fill="rgba(0,122,255,0.12)"
+              stroke="#007AFF"
+              strokeWidth="3"
+              strokeDasharray="14,6"
+              rx="4"
+            />
+            <line
+              x1={edgePreview.splitLineX}
+              y1={edgePreview.baseY - edgePreview.imp.h - 40}
+              x2={edgePreview.splitLineX}
+              y2={edgePreview.baseY + 40}
+              stroke="#007AFF"
+              strokeWidth="4"
+              strokeDasharray="10,5"
+            />
+          </g>
         )}
 
         {/* Labels des éléments */}
@@ -657,24 +1127,15 @@ export default function DoorViewer() {
                 {dynLabels[el.id] || el.label}
               </text>
             ))}
-          {hasImposte && (
-            <text x={(impX + impEndX) / 2} y={RY - impH - 30} fontSize="52">
-              {hasImposte2 ? "Imposte 1" : "Imposte"}
+          {impLabels.map((lbl) => (
+            <text key={`lbl-imp-${lbl.id}`} x={lbl.x} y={lbl.y} fontSize="52">
+              {lbl.text}
             </text>
-          )}
-          {hasImposte && hasImposte2 && (
-            <text
-              x={(impX + impEndX) / 2}
-              y={RY - impH - impH2 - 30}
-              fontSize="52"
-            >
-              Imposte 2
-            </text>
-          )}
+          ))}
         </g>
 
         {/* Boutons + ajout éléments */}
-        {!drag && (
+        {!drag && !edgeDrag && (
           <>
             <AddButtons
               minX={minX}
@@ -684,21 +1145,25 @@ export default function DoorViewer() {
               W={W}
               H={H}
               hasOuvrant={hasOuvrant}
-              hasImposte={hasImposte}
-              hasImposte2={hasImposte2}
-              impH={impH}
-              impH2={impH2}
+              hasRow0={hasRow0}
+              hasRow1={hasRow1}
+              maxH_row0={maxH_row0}
+              maxH_row1={maxH_row1}
               leftCount={leftCount}
               rightCount={rightCount}
               hasPT={elements.some((e) => e.type === "pt")}
               onAddLeft={() => addElement("chassis", "left")}
               onAddRight={() => addElement("chassis", "right")}
               onAddPT={() => addElement("pt")}
-              onAddImposte={() => toggleImposte()}
-              onAddImposte2={() => toggleImposte2()}
+              onAddElargLeft={() => addElement("elargisseur", "left")}
+              onAddElargRight={() => addElement("elargisseur", "right")}
+              hasElargH={hasElargH}
+              elargHTotalH={elargHTotalH}
+              onAddElargH={toggleElargisseurH}
+              onAddImposte={() => toggleImposteRow(0)}
+              onAddImposte2={() => toggleImposteRow(1)}
               onAddOuvrant={toggleOuvrant}
             />
-            {/* Boutons − suppression */}
             <g id="minus-buttons">
               {hasOuvrant && (
                 <MinusBtn
@@ -717,48 +1182,68 @@ export default function DoorViewer() {
                     onClick={() => removeElement(el.id)}
                   />
                 ))}
-              {hasImposte && (
+              {impostes.map((imp) => {
+                const bounds = calcImpBounds(
+                  imp,
+                  positioned,
+                  elements,
+                  hasOuvrant,
+                );
+                if (!bounds) return null;
+                const baseY = getImposteBaseY(imp);
+                return (
+                  <MinusBtn
+                    key={`minus-imp-${imp.id}`}
+                    cx={bounds.impX + bounds.impW / 2}
+                    cy={baseY - imp.h + 35}
+                    onClick={() => removeImposte(imp.id)}
+                  />
+                );
+              })}
+              {elargisseursH.map((elh) => (
                 <MinusBtn
-                  cx={(impX + impEndX) / 2}
-                  cy={RY - impH + 35}
-                  onClick={toggleImposte}
+                  key={`minus-elh-${elh.id}`}
+                  cx={(rawMinX + rawMaxX) / 2}
+                  cy={getElhY(elh) + 35}
+                  onClick={toggleElargisseurH}
                 />
-              )}
-              {hasImposte && hasImposte2 && (
-                <MinusBtn
-                  cx={(impX + impEndX) / 2}
-                  cy={RY - impH - impH2 + 35}
-                  onClick={toggleImposte2}
-                />
-              )}
+              ))}
             </g>
           </>
         )}
 
-        {/* Indicateur de swap pendant le drag imposte */}
-        {dragImp && hasImposte && hasImposte2 && (
-          <g pointerEvents="none">
-            <rect
-              x={impX - 30}
-              y={RY - impH - 30}
-              width={impEndX - impX + 60}
-              height={60}
-              fill="rgba(0,122,255,0.12)"
-              rx="10"
-            />
-            <line
-              x1={impX - 30}
-              y1={RY - impH}
-              x2={impEndX + 30}
-              y2={RY - impH}
-              stroke="#007AFF"
-              strokeWidth="4"
-              strokeDasharray="12,6"
-            />
-          </g>
-        )}
+        {/* Indicateur swap pendant drag vertical imposte */}
+        {dragImp &&
+          hasRow0 &&
+          hasRow1 &&
+          (() => {
+            const imp = impostes.find((i) => i.id === dragImp.impId);
+            if (!imp) return null;
+            const baseY = getImposteBaseY(imp);
+            return (
+              <g pointerEvents="none">
+                <rect
+                  x={allImpX - 30}
+                  y={baseY - imp.h - 30}
+                  width={allImpEndX - allImpX + 60}
+                  height={60}
+                  fill="rgba(0,122,255,0.12)"
+                  rx="10"
+                />
+                <line
+                  x1={allImpX - 30}
+                  y1={baseY - imp.h}
+                  x2={allImpEndX + 30}
+                  y2={baseY - imp.h}
+                  stroke="#007AFF"
+                  strokeWidth="4"
+                  strokeDasharray="12,6"
+                />
+              </g>
+            );
+          })()}
 
-        {/* Zones de dépôt pendant le drag */}
+        {/* Zones de dépôt pendant drag élément */}
         {drag && (
           <g pointerEvents="none">
             {allDropZones.map((zone) => {
@@ -797,9 +1282,171 @@ export default function DoorViewer() {
   );
 }
 
+// Petit bouton + pour ajouter une imposte sur des éléments non couverts
+function SmallPlusBtn({ cx, cy, onClick }) {
+  const R = 55;
+  return (
+    <g
+      cursor="pointer"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      opacity="0.72"
+      onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+      onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.72")}
+      style={{ transition: "opacity 0.15s" }}
+    >
+      <circle cx={cx} cy={cy + 4} r={R} fill="rgba(0,0,0,0.08)" />
+      <circle cx={cx} cy={cy} r={R} fill="white" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={R}
+        fill="none"
+        stroke="#007AFF"
+        strokeWidth="3"
+      />
+      <rect
+        x={cx - 22}
+        y={cy - 5}
+        width={44}
+        height={10}
+        rx={5}
+        fill="#007AFF"
+        pointerEvents="none"
+      />
+      <rect
+        x={cx - 5}
+        y={cy - 22}
+        width={10}
+        height={44}
+        rx={5}
+        fill="#007AFF"
+        pointerEvents="none"
+      />
+    </g>
+  );
+}
+
+// Poignée de séparation horizontale entre deux rangées d'impostes
+function RowBorderHandle({ y, x1, x2, active, onMouseDown }) {
+  const [hov, setHov] = useState(false);
+  const show = hov || active;
+  const midX = (x1 + x2) / 2;
+  const PILL_W = 160;
+  const PILL_H = 44;
+
+  return (
+    <g
+      cursor="ns-resize"
+      onMouseDown={onMouseDown}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{ transition: "opacity 0.15s" }}
+      opacity={show ? 1 : 0.45}
+    >
+      {/* Zone de clic élargie */}
+      <rect x={x1} y={y - 35} width={x2 - x1} height={70} fill="transparent" />
+      {/* Ligne tiretée */}
+      <line
+        x1={x1}
+        y1={y}
+        x2={x2}
+        y2={y}
+        stroke={active ? "#007AFF" : "rgba(0,122,255,0.65)"}
+        strokeWidth={active ? 5 : 3}
+        strokeDasharray="18,7"
+        pointerEvents="none"
+      />
+      {/* Pilule centrale */}
+      <rect
+        x={midX - PILL_W / 2}
+        y={y - PILL_H / 2}
+        width={PILL_W}
+        height={PILL_H}
+        rx={PILL_H / 2}
+        fill={active ? "#007AFF" : "rgba(0,122,255,0.75)"}
+        stroke="white"
+        strokeWidth="3"
+        pointerEvents="none"
+      />
+      {/* Flèches haut/bas */}
+      <path
+        d={`M${midX} ${y - 14} L${midX - 12} ${y - 4} L${midX + 12} ${y - 4} Z`}
+        fill="white"
+        pointerEvents="none"
+      />
+      <path
+        d={`M${midX} ${y + 14} L${midX - 12} ${y + 4} L${midX + 12} ${y + 4} Z`}
+        fill="white"
+        pointerEvents="none"
+      />
+    </g>
+  );
+}
+
+// Poignée de bord d'imposte (gauche ou droite)
+function EdgeHandle({ cx, cy, w, h, active, onMouseDown }) {
+  const [hov, setHov] = useState(false);
+  const show = hov || active;
+  return (
+    <g
+      cursor="ew-resize"
+      onMouseDown={onMouseDown}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      opacity={show ? 1 : 0.35}
+      style={{ transition: "opacity 0.15s" }}
+    >
+      {/* Zone de clic élargie (invisible) */}
+      <rect
+        x={cx - w}
+        y={cy - h / 2}
+        width={w * 2}
+        height={h}
+        fill="transparent"
+      />
+      {/* Pilule visible */}
+      <rect
+        x={cx - w / 2}
+        y={cy - h / 2}
+        width={w}
+        height={h}
+        rx={w / 2}
+        fill={active ? "#007AFF" : "rgba(0,122,255,0.75)"}
+        stroke="white"
+        strokeWidth="3"
+        pointerEvents="none"
+      />
+      {/* Lignes verticales internes */}
+      <line
+        x1={cx - 10}
+        y1={cy - h * 0.22}
+        x2={cx - 10}
+        y2={cy + h * 0.22}
+        stroke="white"
+        strokeWidth="4"
+        strokeLinecap="round"
+        pointerEvents="none"
+      />
+      <line
+        x1={cx + 10}
+        y1={cy - h * 0.22}
+        x2={cx + 10}
+        y2={cy + h * 0.22}
+        stroke="white"
+        strokeWidth="4"
+        strokeLinecap="round"
+        pointerEvents="none"
+      />
+    </g>
+  );
+}
+
 const BTN_R = 80;
-const BTN_GAP = 190; // écart horizontal (châssis gauche/droite)
-const BTN_V_GAP = 380; // écart vertical (boutons imposte)
+const BTN_GAP = 190;
+const BTN_V_GAP = 380;
 
 function MinusBtn({ cx, cy, onClick }) {
   const R = 55;
@@ -816,11 +1463,8 @@ function MinusBtn({ cx, cy, onClick }) {
       onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
       onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.72")}
     >
-      {/* Ombre */}
       <circle cx={cx} cy={cy + 5} r={R} fill="rgba(0,0,0,0.10)" />
-      {/* Fond blanc */}
       <circle cx={cx} cy={cy} r={R} fill="rgba(255,255,255,0.92)" />
-      {/* Anneau subtil */}
       <circle
         cx={cx}
         cy={cy}
@@ -829,7 +1473,6 @@ function MinusBtn({ cx, cy, onClick }) {
         stroke="rgba(60,60,67,0.18)"
         strokeWidth="3"
       />
-      {/* × diagonal */}
       <line
         x1={cx - ARM}
         y1={cy - ARM}
@@ -867,11 +1510,8 @@ function PlusBtn({ cx, cy, label, onClick }) {
       onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.75")}
       opacity="0.75"
     >
-      {/* Ombre portée */}
       <circle cx={cx} cy={cy + 6} r={BTN_R} fill="rgba(0,0,0,0.10)" />
-      {/* Fond blanc */}
       <circle cx={cx} cy={cy} r={BTN_R} fill="#ffffff" />
-      {/* Anneau bleu */}
       <circle
         cx={cx}
         cy={cy}
@@ -880,7 +1520,6 @@ function PlusBtn({ cx, cy, label, onClick }) {
         stroke="#007AFF"
         strokeWidth="4"
       />
-      {/* Croix iOS : barre horizontale */}
       <rect
         x={cx - 32}
         y={cy - 7}
@@ -890,7 +1529,6 @@ function PlusBtn({ cx, cy, label, onClick }) {
         fill="#007AFF"
         pointerEvents="none"
       />
-      {/* Croix iOS : barre verticale */}
       <rect
         x={cx - 7}
         y={cy - 32}
@@ -900,7 +1538,6 @@ function PlusBtn({ cx, cy, label, onClick }) {
         fill="#007AFF"
         pointerEvents="none"
       />
-      {/* Label */}
       <text
         x={cx}
         y={cy + BTN_R + 58}
@@ -926,28 +1563,49 @@ function AddButtons({
   W,
   H,
   hasOuvrant,
-  hasImposte,
-  hasImposte2,
-  impH,
-  impH2,
+  hasRow0,
+  hasRow1,
+  maxH_row0,
+  maxH_row1,
   leftCount,
   rightCount,
   hasPT,
   onAddLeft,
   onAddRight,
   onAddPT,
+  onAddElargLeft,
+  onAddElargRight,
+  hasElargH,
+  elargHTotalH,
+  onAddElargH,
   onAddImposte,
   onAddImposte2,
   onAddOuvrant,
 }) {
   const midY = RY + H / 2;
-  const totalImpH = (hasImposte ? impH : 0) + (hasImposte2 ? impH2 : 0);
-  const topY = RY - totalImpH - BTN_V_GAP;
+  const totalImpH = maxH_row0 + maxH_row1;
+  const topY = RY - totalImpH - elargHTotalH - BTN_V_GAP;
   const midX = (minX + maxX) / 2;
-  const ptX = maxX + BTN_GAP + BTN_R * 2 + 50;
-  const S = BTN_R * 2 + 30; // espacement centre-à-centre "côte à côte"
+  const S = BTN_R * 2 + 30; // espacement horizontal
+  const SV = BTN_R * 2 + 90; // espacement vertical (inclut la hauteur du label)
 
-  // Viewer totalement vide (pas d'ouvrant, pas de châssis, pas de PT) → boutons groupés
+  const porteShift = BTN_R * 2 + 30;
+  const rightSpacer = !hasOuvrant && leftCount > 0 ? porteShift : 0;
+  const leftSpacer = !hasOuvrant && rightCount > 0 ? porteShift : 0;
+  const leftChassisX = minX - BTN_GAP - leftSpacer;
+  const rightChassisX = maxX + BTN_GAP + rightSpacer;
+  const ptX = maxX + BTN_GAP + BTN_R * 2 + 50 + rightSpacer;
+  const elargLeftX = leftChassisX - BTN_R * 2 - 50;
+  const elargRightX = hasPT
+    ? rightChassisX + BTN_R * 2 + 50
+    : ptX + BTN_R * 2 + 50;
+
+  let porteCx = midX;
+  if (!hasOuvrant) {
+    if (leftCount > 0) porteCx = maxX + BTN_GAP;
+    else if (rightCount > 0) porteCx = minX - BTN_GAP;
+  }
+
   const isEmpty = !hasOuvrant && leftCount === 0 && rightCount === 0 && !hasPT;
   if (isEmpty) {
     const btns = [
@@ -957,7 +1615,7 @@ function AddButtons({
       { label: "PT", onClick: onAddPT },
     ];
     const totalW = (btns.length - 1) * S;
-    const startX = RX + W / 2 - totalW / 2;
+    const startX = midX - totalW / 2;
     return (
       <g id="add-buttons" pointerEvents="all">
         {btns.map((b, i) => (
@@ -969,59 +1627,84 @@ function AddButtons({
             onClick={b.onClick}
           />
         ))}
-        {!hasImposte && (
-          <PlusBtn cx={midX} cy={topY} label="Imposte" onClick={onAddImposte} />
-        )}
-        {hasImposte && !hasImposte2 && (
-          <PlusBtn
-            cx={midX}
-            cy={topY}
-            label="Imposte 2"
-            onClick={onAddImposte2}
-          />
-        )}
+        {(() => {
+          const hasElements = hasOuvrant || leftCount > 0 || rightCount > 0;
+          const topBtns = [];
+          if (!hasElargH && hasElements)
+            topBtns.push({ label: "Élarg.", onClick: onAddElargH });
+          if (!hasRow0 && hasElements)
+            topBtns.push({ label: "Imposte", onClick: onAddImposte });
+          else if (hasRow0 && !hasRow1)
+            topBtns.push({ label: "Imposte 2", onClick: onAddImposte2 });
+          const topStartX = midX - ((topBtns.length - 1) * S) / 2;
+          return topBtns.map((btn, i) => (
+            <PlusBtn
+              key={btn.label}
+              cx={topStartX + i * S}
+              cy={topY}
+              label={btn.label}
+              onClick={btn.onClick}
+            />
+          ));
+        })()}
       </g>
     );
   }
 
+  // Colonne gauche (verticale)
+  const leftBtns = [];
+  if (leftCount < 3) leftBtns.push({ label: "Châssis", onClick: onAddLeft });
+  leftBtns.push({ label: "Élarg.", onClick: onAddElargLeft });
+  const leftStartY = midY - ((leftBtns.length - 1) * SV) / 2;
+
+  // Colonne droite (verticale) — Porte incluse si pas encore ajoutée
+  const rightBtns = [];
+  if (!hasOuvrant) rightBtns.push({ label: "Porte", onClick: onAddOuvrant });
+  if (rightCount < 3) rightBtns.push({ label: "Châssis", onClick: onAddRight });
+  if (!hasPT) rightBtns.push({ label: "PT", onClick: onAddPT });
+  rightBtns.push({ label: "Élarg.", onClick: onAddElargRight });
+  const rightStartY = midY - ((rightBtns.length - 1) * SV) / 2;
+
+  // Boutons du haut (horizontaux)
+  const hasElements = hasOuvrant || leftCount > 0 || rightCount > 0;
+  const topBtns = [];
+  if (!hasElargH && hasElements)
+    topBtns.push({ label: "Élarg.", onClick: onAddElargH });
+  if (!hasRow0 && hasElements)
+    topBtns.push({ label: "Imposte", onClick: onAddImposte });
+  else if (hasRow0 && !hasRow1)
+    topBtns.push({ label: "Imposte 2", onClick: onAddImposte2 });
+  const topStartX = midX - ((topBtns.length - 1) * S) / 2;
+
   return (
     <g id="add-buttons" pointerEvents="all">
-      {!hasOuvrant && (
+      {leftBtns.map((btn, i) => (
         <PlusBtn
-          cx={midX}
-          cy={RY - BTN_V_GAP / 2}
-          label="Porte"
-          onClick={onAddOuvrant}
+          key={`left-${btn.label}`}
+          cx={leftChassisX}
+          cy={leftStartY + i * SV}
+          label={btn.label}
+          onClick={btn.onClick}
         />
-      )}
-      {leftCount < 3 && (
+      ))}
+      {rightBtns.map((btn, i) => (
         <PlusBtn
-          cx={minX - BTN_GAP}
-          cy={midY}
-          label="Châssis"
-          onClick={onAddLeft}
+          key={`right-${btn.label}`}
+          cx={rightChassisX}
+          cy={rightStartY + i * SV}
+          label={btn.label}
+          onClick={btn.onClick}
         />
-      )}
-      {rightCount < 3 && (
+      ))}
+      {topBtns.map((btn, i) => (
         <PlusBtn
-          cx={maxX + BTN_GAP}
-          cy={midY}
-          label="Châssis"
-          onClick={onAddRight}
-        />
-      )}
-      {!hasPT && <PlusBtn cx={ptX} cy={midY} label="PT" onClick={onAddPT} />}
-      {!hasImposte && (
-        <PlusBtn cx={midX} cy={topY} label="Imposte" onClick={onAddImposte} />
-      )}
-      {hasImposte && !hasImposte2 && (
-        <PlusBtn
-          cx={midX}
+          key={btn.label}
+          cx={topStartX + i * S}
           cy={topY}
-          label="Imposte 2"
-          onClick={onAddImposte2}
+          label={btn.label}
+          onClick={btn.onClick}
         />
-      )}
+      ))}
     </g>
   );
 }

@@ -39,6 +39,7 @@ export default function Chassis({
   ox,
   ew,
   H,
+  yOff = 0,
   fillType,
   travH = [],
   travV = [],
@@ -52,8 +53,9 @@ export default function Chassis({
   const ralColor = useDoorStore((s) => s.ralColor);
   const strokeColor = useDoorStore((s) => s.strokeColor);
 
+  const chassisY = RY + yOff;
   const innerX = ox + CM;
-  const innerY = RY + CT;
+  const innerY = chassisY + CT;
   const innerW = ew - 2 * CM;
   const innerH = H - 2 * CT;
 
@@ -68,13 +70,14 @@ export default function Chassis({
       style={glowStyle(selected, hovered)}
       onClick={onSelect}
       onMouseDown={onDragStart}
+      onTouchStart={onDragStart}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       {/* Rect invisible = hit-area couvrant tout le châssis */}
       <rect
         x={ox}
-        y={RY}
+        y={chassisY}
         width={ew}
         height={H}
         fill="transparent"
@@ -129,7 +132,7 @@ export default function Chassis({
         <rect
           key={t.id}
           x={innerX + t.pos}
-          y={RY}
+          y={chassisY}
           width={BAR}
           height={H}
           fill={ralColor}
@@ -137,15 +140,27 @@ export default function Chassis({
       ))}
 
       {/* 4 — Profils extérieurs */}
-      <rect x={ox} y={RY} width={CM} height={H} fill={ralColor} />
-      <rect x={ox + ew - CM} y={RY} width={CM} height={H} fill={ralColor} />
-      <rect x={ox} y={RY} width={ew} height={CT} fill={ralColor} />
-      <rect x={ox} y={RY + H - CT} width={ew} height={CT} fill={ralColor} />
+      <rect x={ox} y={chassisY} width={CM} height={H} fill={ralColor} />
+      <rect
+        x={ox + ew - CM}
+        y={chassisY}
+        width={CM}
+        height={H}
+        fill={ralColor}
+      />
+      <rect x={ox} y={chassisY} width={ew} height={CT} fill={ralColor} />
+      <rect
+        x={ox}
+        y={chassisY + H - CT}
+        width={ew}
+        height={CT}
+        fill={ralColor}
+      />
 
       {/* 5 — Contour */}
       <rect
         x={ox + 0.5}
-        y={RY + 0.5}
+        y={chassisY + 0.5}
         width={ew - 1}
         height={H - 1}
         fill="none"
@@ -157,7 +172,7 @@ export default function Chassis({
       {selected && (
         <rect
           x={ox - 4}
-          y={RY - 4}
+          y={chassisY - 4}
           width={ew + 8}
           height={H + 8}
           fill="none"

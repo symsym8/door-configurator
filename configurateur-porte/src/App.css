@@ -63,3 +63,15 @@
   display: flex;
   overflow: hidden;
 }
+
+/* ── Layout mobile ── */
+@media (max-width: 768px) {
+  .app-header {
+    height: 44px;
+    padding: 0 16px;
+  }
+
+  .app-body {
+    flex-direction: column;
+  }
+}

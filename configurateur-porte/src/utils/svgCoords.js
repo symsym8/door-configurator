@@ -58,8 +58,10 @@ export const SVG_BASE = {
   od_cint: { x: 3645.5, y: 2145.5, w: 694, h: 1844 },
 
   // ── CONTOURS SYSTÈME PIVOT ───────────────────────────────────────────
-  pivot_g: { x: 3570.5, y: 2000.5, w: 69, h: 2079 },
-  pivot_d: { x: 4360.2, y: 2000.5, w: 69, h: 2079 },
+  pivot_g: { x: 3570.5, y: 2000.5, w: 69, h: 2099 },
+  pivot_d: { x: 4360.2, y: 2000.5, w: 69, h: 2099 },
+  pivot_g_bas: { x: 3570.5, y: 4080, w: 69, h: 20 },
+  pivot_d_bas: { x: 4360.2, y: 4080, w: 69, h: 20 },
 
   // ── PAUMELLES G ──────────────────────────────────────────────────────
   pg: [
@@ -123,6 +125,8 @@ export const SVG_ANCHORS = {
   od_cint: ["left", "top", true, true],
   pivot_g: ["left", "top", false, true],
   pivot_d: ["right", "top", false, true],
+  pivot_g_bas: ["left", "bottom", false, false],
+  pivot_d_bas: ["right", "bottom", false, false],
   bd_ph: ["right", "bottom", false, false],
   bd_pb: ["right", "bottom", false, false],
   bd_bi: ["right", "bottom", false, false],
